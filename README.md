@@ -1,32 +1,112 @@
-PCFlow Mascot
-PCFlow
-[Paper Title: Towards XXX via PCFlow]
 
-arXivHuggingFaceLicenseGitHub Stars
+<div align="center">
 
-🔥 PCFlow 是一个用于 XXX 的框架，基于 XX 实现，在 XX 任务上达到 SOTA。
+<!-- <img src="assets/mascot.png" width="200" alt="PCFlow Mascot"/> -->
+
+# PCFlow
+
+**PCFlow: Physics-Conditioned Flow Matching for GPR Pipeline Synthesis**
+
+[![arXiv](https://img.shields.io/badge/arXiv-2501.xxxxx-b31b1b.svg?logo=arXiv)](https://arxiv.org/abs/2501.xxxxx)
+[![HuggingFace](https://img.shields.io/badge/🤗_Weights-Coming_Soon-yellow.svg)](https://huggingface.co/xxx/PCFlow)
+[![License](https://img.shields.io/badge/License-Apache_2.0-green.svg)](LICENSE)
+[![GitHub Stars](https://img.shields.io/github/stars/GeometryFu/PCFlow?style=social)](https://github.com/GeometryFu/PCFlow)
+
+[//]: # "上方 badge 替换你的真实链接，HuggingFace 暂时保留 Coming_Soon 即可"
+
+🔥 **PCFlow** 是一个用于 XXX 的框架，基于 XX 实现，在 XX 任务上达到 SOTA。
 
 
+<p float="center">
+  <img src="assets/pipeline.png" width="90%" />
+</p>
 
-📋 目录
-🚀 快速开始
-📦 环境安装
-🧠 推理
-🏋️ 训练
-📊 结果
-📖 论文
-🤝 贡献与致谢
-📝 引用
-🚀 快速开始
-30 秒跑通推理 —— 克隆仓库、安装依赖、下载权重、一键推理：
+</div>
 
-# 1️⃣ 克隆仓库git clone https://github.com/yourname/PCFlow.gitcd PCFlow# 2️⃣ 创建环境 & 安装依赖conda create -n pcflow python=3.10 -yconda activate pcflowpip install -r requirements.txt# 3️⃣ 下载预训练权重（HuggingFace）# ⚠️ 权重即将上传，目前请使用下方临时链接 / 或自行训练mkdir -p checkpoints# wget -P checkpoints https://huggingface.co/xxx/PCFlow/resolve/main/pcflow_base.pth# 4️⃣ 运行推理 🎉python inference.py \    --config configs/pcflow_base.yaml \    --checkpoint checkpoints/pcflow_base.pth \    --input examples/sample_input.png \    --output results/
+---
+
+## 📋 目录
+
+- [🚀 快速开始](#-快速开始)
+- [📦 环境安装](#-环境安装)
+- [🧠 推理](#-推理)
+- [🏋️ 训练](#️-训练)
+- [📊 结果](#-结果)
+- [📖 论文](#-论文)
+
+
+## 🚀 快速开始
+
+1️⃣ 克隆仓库
+```bash
+git clone https://github.com/GeometryFu/PCFlow.git
+cd PCFlow
+```
+
+2️⃣ 创建环境 & 安装依赖
+```bash
+conda create -n pcflow python=3.10 -y
+conda activate pcflow
+pip install -r requirements.txt
+```
+
+3️⃣ 下载预训练权重（HuggingFace）
+```bash
+mkdir -p checkpoints
+# wget -P checkpoints https://huggingface.co/xxx/PCFlow/resolve/main/pcflow_base.pth
+```
+
+4️⃣ 运行推理 🎉
+```bash
+python inference.py \
+    --config configs/pcflow_base.yaml \
+    --checkpoint checkpoints/pcflow_base.pth \
+    --input examples/sample_input.png \
+    --output results/
+```
+
+
 📷 预期输出
-📦 环境安装
-🔧 详细安装步骤
-🧠 推理
-bash
 
+```
+✅ Loading checkpoint from checkpoints/pcflow_base.pth
+✅ Model loaded successfully | Params: 85.2M
+✅ Running inference on examples/sample_input.png
+✅ Result saved to results/sample_output.png
+⏱  Inference time: 0.42s (single A100)
+```
+
+## 📦 环境安装
+
+
+### 依赖项
+
+- Python >= 3.10
+- PyTorch >= 2.1
+- CUDA >= 11.8（推荐）
+
+### 安装
+
+```bash
+# 方式一：pip
+pip install -r requirements.txt
+
+# 方式二：editable 安装（开发推荐）
+pip install -e .
+```
+
+### 验证安装
+
+```bash
+python -c "import pcflow; print(pcflow.__version__)"
+# 输出: 0.1.0
+```
+
+---
+
+## 🧠 推理
+
+```bash
 # 单张推理
 python inference.py \
     --config configs/pcflow_base.yaml \
@@ -47,10 +127,28 @@ python inference.py \
     --checkpoint checkpoints/pcflow_large.pth \
     --input path/to/your/input \
     --output results/
-⚙️ 完整参数说明
-🏋️ 训练
-bash
+```
 
+## ⚙️ 完整参数说明
+
+| 参数            | 类型 | 默认值                     | 说明           |
+| --------------- | ---- | -------------------------- | -------------- |
+| `--config`      | str  | `configs/pcflow_base.yaml` | 配置文件路径   |
+| `--checkpoint`  | str  | 必填                       | 模型权重路径   |
+| `--input`       | str  | None                       | 单张输入路径   |
+| `--input_dir`   | str  | None                       | 批量输入文件夹 |
+| `--output`      | str  | `results/`                 | 输出目录       |
+| `--device`      | str  | `cuda`                     | 推理设备       |
+| `--seed`        | int  | `42`                       | 随机种子       |
+| `--num_samples` | int  | `1`                        | 采样数量       |
+
+</details>
+
+---
+
+## 🏋️ 训练
+
+```bash
 # 单卡训练
 python train.py --config configs/pcflow_base.yaml
 
@@ -59,64 +157,47 @@ torchrun --nproc_per_node=4 train.py --config configs/pcflow_base.yaml
 
 # 恢复训练
 python train.py --config configs/pcflow_base.yaml --resume checkpoints/pcflow_base_epoch10.pth
-📁 数据集准备
-📊 结果
-<div align="center">
+```
 
-Method
-Metric A ↑
-Metric B ↓
-Metric C ↑
-Params
-FPS
-Baseline	72.3	4.51	68.1	90M	25
-PCFlow-S	76.8	3.82	72.4	45M	48
-PCFlow-B	79.1	3.15	75.6	85M	32
-PCFlow-L	81.4	2.73	78.2	160M	18
+## 📁 数据集准备
 
-</div>
+请将数据集组织为如下结构：
 
-<div align="center">
-<img src="assets/results.png" width="85%" alt="Qualitative Results"/>
-</div>
+```
+data/
+├── dataset_name/
+│   ├── train/
+│   │   ├── 00001.png
+│   │   ├── 00002.png
+│   │   └── ...
+│   ├── val/
+│   │   └── ...
+│   └── metadata.csv
+```
 
-📖 论文
-PCFlow: [Full Paper Title]
-[Author Name]¹, [Author Name]², [Author Name]¹
+修改 `configs/pcflow_base.yaml` 中的 `data.root` 字段指向你的数据路径。
 
-¹ Institution One &nbsp; ² Institution Two
 
-📄 Paper: arXiv Link (Coming Soon)
+---
 
-🏠 Project Page: https://yourname.github.io/PCFlow
+## 📖 论文
 
-🤗 Model Weights: HuggingFace (Coming Soon)
+### PCFlow: Physics-Conditioned Flow Matching for GPR Pipeline Synthesis
 
-🤝 贡献与致谢
-本项目基于以下优秀开源工作构建：
+📄 **Paper**: [arXiv Link (Coming Soon)](https://arxiv.org/abs/2501.xxxxx)
 
-PyTorch
-XXXXX
-欢迎社区贡献！请阅读 CONTRIBUTING.md 了解详情。
+🏠 **Project Page**: [https://GeometryFu.github.io/PCFlow](https://GeometryFu.github.io/PCFlow)
 
-📝 引用
-如果你在研究中使用了 PCFlow，请引用我们的论文：
+🤗 **Model Weights**: [HuggingFace (Coming Soon)](https://huggingface.co/xxx/PCFlow)
 
-bibtex
+---
 
-@article{pcflow2025,
-  title={PCFlow: Full Paper Title},
-  author={Author Name and Author Name and Author Name},
-  journal={arXiv preprint arXiv:2501.xxxxx},
-  year={2025}
-}
 <div align="center">
 
 <img src="assets/mascot.png" width="120" alt="PCFlow Mascot"/>
 
-PCFlow is released under the Apache 2.0 License.
+**PCFlow** is released under the [Apache 2.0 License](LICENSE).
 
 Made with ❤️ by the PCFlow Team
 
 </div>
-```
