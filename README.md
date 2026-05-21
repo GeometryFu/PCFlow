@@ -23,7 +23,6 @@
 
 </div>
 
----
 
 ## 📋 目录
 
@@ -102,7 +101,6 @@ python -c "import pcflow; print(pcflow.__version__)"
 # 输出: 0.1.0
 ```
 
----
 
 ## 🧠 推理
 
@@ -129,7 +127,7 @@ python inference.py \
     --output results/
 ```
 
-## ⚙️ 完整参数说明
+### 完整参数说明
 
 | 参数            | 类型 | 默认值                     | 说明           |
 | --------------- | ---- | -------------------------- | -------------- |
@@ -142,9 +140,7 @@ python inference.py \
 | `--seed`        | int  | `42`                       | 随机种子       |
 | `--num_samples` | int  | `1`                        | 采样数量       |
 
-</details>
 
----
 
 ## 🏋️ 训练
 
@@ -159,7 +155,7 @@ torchrun --nproc_per_node=4 train.py --config configs/pcflow_base.yaml
 python train.py --config configs/pcflow_base.yaml --resume checkpoints/pcflow_base_epoch10.pth
 ```
 
-## 📁 数据集准备
+### 数据集准备
 
 请将数据集组织为如下结构：
 
@@ -178,8 +174,6 @@ data/
 修改 `configs/pcflow_base.yaml` 中的 `data.root` 字段指向你的数据路径。
 
 
----
-
 ## 📖 论文
 
 ### PCFlow: Physics-Conditioned Flow Matching for GPR Pipeline Synthesis
@@ -190,7 +184,6 @@ data/
 
 🤗 **Model Weights**: [HuggingFace (Coming Soon)](https://huggingface.co/xxx/PCFlow)
 
----
 
 <div align="center">
 
