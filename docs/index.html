@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PCFlow — Physics-Conditioned GPR Synthesis</title>
+  <meta name="description"
+    content="PCFlow: A physics-conditioned flow matching framework for fast and physically consistent GPR B-scan synthesis." />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:wght@400;500;600;700&display=swap"
+    rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            serif: ['Instrument Serif', 'serif'],
+          },
+        },
+      },
+    }
+  </script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #09090b;
+      color: #f4f4f5;
+    }
+
+    .font-serif-title {
+      font-family: 'Instrument Serif', serif;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #09090b;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #27272a;
+      border-radius: 3px;
+    }
+
+    /* Code block */
+    .code-block {
+      background: #18181b;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 12px;
+      font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.7;
+      overflow-x: auto;
+    }
+
+    .code-block .comment {
+      color: #71717a;
+    }
+
+    .code-block .command {
+      color: #a1a1aa;
+    }
+
+    .code-block .flag {
+      color: #10b981;
+    }
+
+    .code-block .string {
+      color: #fbbf24;
+    }
+
+    .code-block .prompt {
+      color: #52525b;
+    }
+
+    /* Badge */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 16px;
+      border-radius: 9999px;
+      font-size: 13px;
+      font-weight: 500;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(24, 24, 27, 0.6);
+      backdrop-filter: blur(12px);
+      transition: all 0.3s ease;
+      text-decoration: none;
+    }
+
+    .badge:hover {
+      border-color: rgba(255, 255, 255, 0.25);
+      background: rgba(24, 24, 27, 0.9);
+    }
+
+    .badge-arxiv {
+      border-color: rgba(239, 68, 68, 0.3);
+    }
+
+    .badge-arxiv:hover {
+      border-color: rgba(239, 68, 68, 0.6);
+      background: rgba(239, 68, 68, 0.1);
+    }
+
+    .badge-hf {
+      border-color: rgba(249, 176, 25, 0.3);
+    }
+
+    .badge-hf:hover {
+      border-color: rgba(249, 176, 25, 0.6);
+      background: rgba(249, 176, 25, 0.1);
+    }
+
+    .badge-gh {
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+
+    .badge-gh:hover {
+      border-color: rgba(255, 255, 255, 0.35);
+    }
+
+    .badge-license {
+      border-color: rgba(16, 185, 129, 0.3);
+    }
+
+    .badge-license:hover {
+      border-color: rgba(16, 185, 129, 0.5);
+    }
+
+    /* Copy button */
+    .copy-btn {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: rgba(39, 39, 42, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #a1a1aa;
+      border-radius: 8px;
+      padding: 5px 10px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .copy-btn:hover {
+      color: #f4f4f5;
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+
+    .copy-btn.copied {
+      color: #10b981;
+      border-color: rgba(16, 185, 129, 0.4);
+    }
+
+    /* Section title decoration */
+    .section-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: #10b981;
+    }
+
+    .section-tag::before {
+      content: '';
+      display: block;
+      width: 24px;
+      height: 1px;
+      background: #10b981;
+    }
+
+    /* Card */
+    .glass-card {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 16px;
+      transition: all 0.5s ease;
+    }
+
+    .glass-card:hover {
+      background: rgba(255, 255, 255, 0.04);
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+
+    /* Mascot float animation */
+    @keyframes float {
+
+      0%,
+      100% {
+        transform: translateY(0px);
+      }
+
+      50% {
+        transform: translateY(-12px);
+      }
+    }
+
+    .mascot-float {
+      animation: float 4s ease-in-out infinite;
+    }
+
+    /* Glow pulse */
+    @keyframes glow-pulse {
+
+      0%,
+      100% {
+        opacity: 0.3;
+        transform: scale(1);
+      }
+
+      50% {
+        opacity: 0.5;
+        transform: scale(1.05);
+      }
+    }
+
+    .glow-bg {
+      animation: glow-pulse 6s ease-in-out infinite;
+    }
+
+    /* Figure caption */
+    .fig-caption {
+      font-size: 13px;
+      color: #71717a;
+      text-align: center;
+      margin-top: 12px;
+      font-style: italic;
+    }
+
+    /* Fade in animation */
+    .fade-up {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: all 0.8s cubic-bezier(0.2, 0, 0.2, 1);
+    }
+
+    .fade-up.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* Toast notification */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: #18181b;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #f4f4f5;
+      padding: 10px 20px;
+      border-radius: 12px;
+      font-size: 13px;
+      z-index: 999;
+      opacity: 0;
+      transition: all 0.4s cubic-bezier(0.2, 0, 0.2, 1);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* Placeholder image styling */
+    .img-placeholder {
+      background: linear-gradient(135deg, rgba(24, 24, 27, 0.8), rgba(9, 9, 11, 0.9));
+      border: 1px dashed rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #52525b;
+      font-size: 13px;
+    }
+  </style>
+</head>
+
+<body class="antialiased">
+
+  <!-- ===================== NAVIGATION ===================== -->
+  <nav class="fixed top-0 left-0 right-0 z-50 h-16 flex items-center px-6"
+    style="background: rgba(9,9,11,0.85); backdrop-filter: blur(16px); border-bottom: 1px solid rgba(255,255,255,0.05);">
+    <div class="max-w-7xl mx-auto w-full flex items-center justify-between">
+      <a href="#" class="flex items-center gap-2.5 text-white font-semibold text-base tracking-tight">
+        <div class="w-7 h-7 rounded-md bg-emerald-500 flex items-center justify-center">
+          <i data-lucide="workflow" class="w-4 h-4 text-white"></i>
+        </div>
+        PCFlow
+      </a>
+      <div class="hidden md:flex items-center gap-8 text-sm text-zinc-400">
+        <a href="#quickstart" class="hover:text-zinc-100 transition-colors">Quick Start</a>
+        <a href="#method" class="hover:text-zinc-100 transition-colors">Method</a>
+        <a href="#results" class="hover:text-zinc-100 transition-colors">Results</a>
+        <a href="#citation" class="hover:text-zinc-100 transition-colors">Citation</a>
+      </div>
+      <div class="flex items-center gap-3">
+        <a href="https://github.com/GeometryFu/PCFlow" target="_blank"
+          class="text-zinc-500 hover:text-zinc-200 transition-colors">
+          <i data-lucide="github" class="w-5 h-5"></i>
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ===================== HERO ===================== -->
+  <section class="relative min-h-screen flex items-center justify-center pt-16 overflow-hidden">
+    <!-- Background glow -->
+    <div class="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[600px] rounded-full glow-bg"
+      style="background: radial-gradient(ellipse, rgba(16,185,129,0.08) 0%, transparent 70%);"></div>
+    <div class="absolute bottom-0 left-0 right-0 h-48"
+      style="background: linear-gradient(to top, #09090b 0%, transparent 100%);"></div>
+
+    <div class="relative z-10 max-w-5xl mx-auto px-6 text-center">
+      <!-- Mascot -->
+      <div class="mascot-float mb-8 flex justify-center">
+        <!-- 👇 替换为你的吉祥物图片 👇 -->
+        <img src="assets/images/mascot.png" alt="PCFlow Mascot"
+          class="w-36 h-36 md:w-44 md:h-44 object-contain drop-shadow-2xl"
+          onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+        <div class="img-placeholder w-36 h-36 md:w-44 md:h-44 hidden">
+          <i data-lucide="image" class="w-8 h-8 mb-2"></i>
+          mascot.png
+        </div>
+      </div>
+
+      <!-- Title -->
+      <h1 class="font-serif-title text-5xl md:text-7xl lg:text-8xl tracking-tight text-white mb-6">
+        PCFlow
+      </h1>
+
+      <!-- Tagline -->
+      <p class="text-lg md:text-xl text-zinc-400 font-light leading-relaxed max-w-2xl mx-auto mb-4">
+        Physics-Conditioned Flow Matching for GPR Pipeline Synthesis
+      </p>
+      <p class="text-sm text-zinc-500 max-w-xl mx-auto mb-10">
+        A novel framework for fast GPR B-scan synthesis, achieving high visual fidelity and strong physical consistency
+        via Maxwell-informed condition fields.
+      </p>
+
+      <!-- Badges -->
+      <div class="flex flex-wrap items-center justify-center gap-3 mb-12">
+        <!-- 👇 替换 arXiv 链接 👇 -->
+        <a href="https://arxiv.org/abs/XXXX.XXXXX" target="_blank" class="badge badge-arxiv">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15v-4H7l5-8v4h4l-5 8z" />
+          </svg>
+          arXiv Paper
+        </a>
+        <!-- 👇 替换 HuggingFace 链接 👇 -->
+        <a href="https://huggingface.co/xxx/PCFlow" target="_blank" class="badge badge-hf">
+          <i data-lucide="box" class="w-4 h-4"></i>
+          HuggingFace
+        </a>
+        <a href="https://github.com/GeometryFu/PCFlow" target="_blank" class="badge badge-gh">
+          <i data-lucide="github" class="w-4 h-4"></i>
+          GitHub
+        </a>
+        <a href="#citation" class="badge badge-license">
+          <i data-lucide="scale" class="w-4 h-4"></i>
+          Apache 2.0
+        </a>
+      </div>
+
+      <!-- Scroll hint -->
+      <div class="animate-bounce text-zinc-600">
+        <i data-lucide="chevron-down" class="w-5 h-5 mx-auto"></i>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== TEASER FIGURE ===================== -->
+  <section class="relative py-20 px-6">
+    <div class="max-w-6xl mx-auto fade-up">
+      <!-- 👇 替换为论文 teaser 图 👇 -->
+      <img src="assets/images/teaser.png" alt="Teaser Figure"
+        class="w-full rounded-2xl border border-white/5 shadow-2xl"
+        onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+      <div class="img-placeholder w-full h-64 md:h-96 hidden rounded-2xl">
+        <i data-lucide="image" class="w-10 h-10 mb-3"></i>
+        <span>teaser.png — GPR B-scan synthesis results comparison</span>
+      </div>
+      <p class="fig-caption">
+        Figure 1: PCFlow generates GPR B-scans with accurate hyperbolic response geometry and high visual fidelity, even
+        under out-of-distribution scenarios.
+      </p>
+    </div>
+  </section>
+
+  <!-- ===================== QUICK START ===================== -->
+  <section id="quickstart" class="relative py-24 px-6">
+    <div class="max-w-4xl mx-auto">
+      <div class="fade-up">
+        <span class="section-tag">Quick Start</span>
+        <h2 class="font-serif-title text-3xl md:text-5xl tracking-tight text-white mt-4 mb-4">
+          Ready to Run
+        </h2>
+        <p class="text-zinc-400 text-base md:text-lg font-light leading-relaxed mb-12 max-w-2xl">
+          Clone the repo, install dependencies, and generate your first physically consistent GPR B-scan in minutes.
+        </p>
+      </div>
+
+      <!-- Step 1 -->
+      <div class="fade-up mb-8">
+        <div class="flex items-center gap-3 mb-4">
+          <div
+            class="w-8 h-8 rounded-full bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-sm font-semibold">
+            1</div>
+          <h3 class="text-white font-medium text-base">Clone & Install Dependencies</h3>
+        </div>
+        <div class="code-block p-5 relative">
+          <button class="copy-btn" onclick="copyCode(this)">
+            <i data-lucide="copy" class="w-3.5 h-3.5"></i> Copy
+          </button>
+          <pre class="text-zinc-300"><span class="comment"># Clone the repository</span>
+<span class="prompt">$</span> <span class="command">git clone https://github.com/GeometryFu/PCFlow.git</span>
+<span class="prompt">$</span> <span class="command">cd PCFlow</span>
+
+<span class="comment"># Create conda environment</span>
+<span class="prompt">$</span> <span class="command">conda create -n pcflow python=3.10 -y</span>
+<span class="prompt">$</span> <span class="command">conda activate pcflow</span>
+
+<span class="comment"># Install dependencies</span>
+<span class="prompt">$</span> <span class="command">pip install -r requirements.txt</span>
+<span class="prompt">$</span> <span class="command">pip install -e .</span></pre>
+        </div>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="fade-up mb-8">
+        <div class="flex items-center gap-3 mb-4">
+          <div
+            class="w-8 h-8 rounded-full bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-sm font-semibold">
+            2</div>
+          <h3 class="text-white font-medium text-base">Download Pre-trained Weights</h3>
+        </div>
+        <div class="code-block p-5 relative">
+          <button class="copy-btn" onclick="copyCode(this)">
+            <i data-lucide="copy" class="w-3.5 h-3.5"></i> Copy
+          </button>
+          <pre
+            class="text-zinc-300"><span class="comment"># Download weights from HuggingFace (Coming Soon)</span>
+<span class="prompt">$</span> <span class="command">mkdir -p checkpoints</span>
+<span class="prompt">$</span> <span class="command">wget https://huggingface.co/xxx/PCFlow/resolve/main/pcflow_base.pth -P checkpoints/</span></pre>
+        </div>
+        <p class="text-zinc-500 text-xs mt-3 flex items-center gap-1.5">
+          <i data-lucide="info" class="w-3.5 h-3.5"></i>
+          Weights are coming soon. Please check the HuggingFace link later.
+        </p>
+      </div>
+
+      <!-- Step 3 -->
+      <div class="fade-up mb-8">
+        <div class="flex items-center gap-3 mb-4">
+          <div
+            class="w-8 h-8 rounded-full bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-sm font-semibold">
+            3</div>
+          <h3 class="text-white font-medium text-base">Run Inference</h3>
+        </div>
+        <div class="code-block p-5 relative">
+          <button class="copy-btn" onclick="copyCode(this)">
+            <i data-lucide="copy" class="w-3.5 h-3.5"></i> Copy
+          </button>
+          <pre
+            class="text-zinc-300"><span class="comment"># Generate B-scan from physical condition parameters</span>
+<span class="prompt">$</span> <span class="command">python inference.py</span> <span class="flag">--config configs/pcflow_base.yaml</span> <span class="flag">--checkpoint checkpoints/pcflow_base.pth</span> <span class="flag">--condition examples/sample_params.yaml</span> <span class="flag">--output results/</span>
+
+<span class="comment"># Train your model</span>
+<span class="prompt">$</span> <span class="command">torchrun --nproc_per_node=4 train.py</span> <span class="flag">--config configs/pcflow_base.yaml</span></pre>
+        </div>
+      </div>
+
+      <!-- Expected output -->
+      <div class="fade-up glass-card p-6">
+        <div class="flex items-center gap-2 mb-3">
+          <i data-lucide="terminal" class="w-4 h-4 text-emerald-400"></i>
+          <span class="text-sm text-emerald-400 font-medium">Expected Output</span>
+        </div>
+        <div class="code-block p-4" style="border: none; background: rgba(0,0,0,0.3);">
+          <pre class="text-zinc-400 text-xs md:text-sm"><span style="color:#10b981">✓</span> Loading checkpoint from checkpoints/pcflow_base.pth
+<span style="color:#10b981">✓</span> Model loaded successfully | Params: 85.2M
+<span style="color:#10b981">✓</span> Constructing Maxwell-informed condition field...
+<span style="color:#10b981">✓</span> Running flow matching sampling (50 steps, CFG scale 2.5)
+<span style="color:#10b981">✓</span> Result saved to results/sample_output.png
+  └─ Geometry Metrics — Apex-x: 0.62, Curve: 1.01, Mask IoU: 0.91</pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== METHOD ===================== -->
+  <section id="method" class="relative py-24 px-6">
+    <div class="max-w-6xl mx-auto">
+      <div class="fade-up">
+        <span class="section-tag">Method</span>
+        <h2 class="font-serif-title text-3xl md:text-5xl tracking-tight text-white mt-4 mb-4">
+          Method Overview
+        </h2>
+        <p class="text-zinc-400 text-base md:text-lg font-light leading-relaxed mb-12 max-w-2xl">
+          PCFlow constructs a Maxwell-informed dense physical condition field from parameterized physical models. This
+          condition field guides conditional flow matching in the VAE latent space, reducing transport variance and
+          generating physically feasible GPR B-scans.
+        </p>
+      </div>
+
+      <!-- Pipeline figure -->
+      <div class="fade-up mb-16">
+        <!-- 👇 替换为方法框架图 👇 -->
+        <img src="assets/images/pipeline.png" alt="Method Pipeline"
+          class="w-full rounded-2xl border border-white/5 shadow-2xl"
+          onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+        <div class="img-placeholder w-full h-64 md:h-80 hidden rounded-2xl">
+          <i data-lucide="image" class="w-10 h-10 mb-3"></i>
+          <span>pipeline.png — Method Architecture</span>
+        </div>
+        <p class="fig-caption">
+          Figure 2: Overview of PCFlow. A Maxwell-informed condition encoder transforms simulation parameters into dense
+          physical fields, guiding the flow matching process in the VAE latent space.
+        </p>
+      </div>
+
+      <!-- Key features grid -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 fade-up">
+        <div class="glass-card p-8">
+          <div class="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center mb-5">
+            <i data-lucide="atom" class="w-5 h-5 text-emerald-400"></i>
+          </div>
+          <h3 class="text-white font-medium text-base mb-2">Maxwell-Informed Conditioning</h3>
+          <p class="text-zinc-500 text-sm leading-relaxed">
+            Encodes material properties, target geometry, propagation cues, and response-domain priors into an
+            interpretable dense condition field.
+          </p>
+        </div>
+        <div class="glass-card p-8">
+          <div class="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center mb-5">
+            <i data-lucide="scan-line" class="w-5 h-5 text-emerald-400"></i>
+          </div>
+          <h3 class="text-white font-medium text-base mb-2">Physical Consistency</h3>
+          <p class="text-zinc-500 text-sm leading-relaxed">
+            Ensures the generated hyperbolic responses appear at correct lateral positions, depths, and aperture shapes
+            determined by the physical scene.
+          </p>
+        </div>
+        <div class="glass-card p-8">
+          <div class="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center mb-5">
+            <i data-lucide="zap" class="w-5 h-5 text-emerald-400"></i>
+          </div>
+          <h3 class="text-white font-medium text-base mb-2">Fast & Controllable</h3>
+          <p class="text-zinc-500 text-sm leading-relaxed">
+            Formulates synthesis as conditional flow matching with Classifier-Free Guidance, achieving fast and
+            deterministic physically aligned generation.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== RESULTS ===================== -->
+  <section id="results" class="relative py-24 px-6">
+    <div class="max-w-6xl mx-auto">
+      <div class="fade-up">
+        <span class="section-tag">Results</span>
+        <h2 class="font-serif-title text-3xl md:text-5xl tracking-tight text-white mt-4 mb-4">
+          Accurate Geometry & High Fidelity
+        </h2>
+        <p class="text-zinc-400 text-base md:text-lg font-light leading-relaxed mb-12 max-w-2xl">
+          PCFlow significantly outperforms existing GAN-based, diffusion, and text-guided baselines in response geometry
+          consistency while maintaining strong image quality.
+        </p>
+      </div>
+
+      <!-- Results figure -->
+      <div class="fade-up mb-12">
+        <!-- 👇 替换为结果对比图 👇 -->
+        <img src="assets/images/results.png" alt="Results" class="w-full rounded-2xl border border-white/5 shadow-2xl"
+          onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+        <div class="img-placeholder w-full h-64 md:h-80 hidden rounded-2xl">
+          <i data-lucide="image" class="w-10 h-10 mb-3"></i>
+          <span>results.png — Qualitative comparison</span>
+        </div>
+        <p class="fig-caption">
+          Figure 3: Qualitative comparison on OOD test samples. PCFlow generates more physically consistent hyperbolic
+          responses than general generative baselines.
+        </p>
+      </div>
+
+      <!-- Results table -->
+      <div class="fade-up glass-card overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-white/5">
+                <th class="text-left py-4 px-6 text-zinc-400 font-medium">Method</th>
+                <th class="text-center py-4 px-6 text-zinc-400 font-medium">Curve ↓</th>
+                <th class="text-center py-4 px-6 text-zinc-400 font-medium">Mask IoU ↑</th>
+                <th class="text-center py-4 px-6 text-zinc-400 font-medium">PSNR ↑</th>
+                <th class="text-center py-4 px-6 text-zinc-400 font-medium">LPIPS ↓</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="border-b border-white/5">
+                <td class="py-4 px-6 text-zinc-300">Pix2Pix</td>
+                <td class="py-4 px-6 text-center text-zinc-400">52.94</td>
+                <td class="py-4 px-6 text-center text-zinc-400">0.00</td>
+                <td class="py-4 px-6 text-center text-zinc-400">19.81</td>
+                <td class="py-4 px-6 text-center text-zinc-400">0.4560</td>
+              </tr>
+              <tr class="border-b border-white/5">
+                <td class="py-4 px-6 text-zinc-300">ControlNet</td>
+                <td class="py-4 px-6 text-center text-zinc-400">111.75</td>
+                <td class="py-4 px-6 text-center text-zinc-400">0.00</td>
+                <td class="py-4 px-6 text-center text-zinc-400">18.28</td>
+                <td class="py-4 px-6 text-center text-zinc-400">0.4800</td>
+              </tr>
+              <tr class="border-b border-white/5">
+                <td class="py-4 px-6 text-zinc-300">SD2.1 LoRA-U+TE</td>
+                <td class="py-4 px-6 text-center text-zinc-400">117.64</td>
+                <td class="py-4 px-6 text-center text-zinc-400">0.02</td>
+                <td class="py-4 px-6 text-center text-zinc-400">18.88</td>
+                <td class="py-4 px-6 text-center text-zinc-400">0.3128</td>
+              </tr>
+              <tr class="border-b border-white/5 bg-emerald-500/5">
+                <td class="py-4 px-6 text-white font-medium">
+                  PCFlow (GR)
+                  <span class="ml-2 text-xs bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full">Ours</span>
+                </td>
+                <td class="py-4 px-6 text-center text-emerald-400 font-medium">3.57</td>
+                <td class="py-4 px-6 text-center text-emerald-400 font-medium">0.73</td>
+                <td class="py-4 px-6 text-center text-emerald-400 font-medium">19.89</td>
+                <td class="py-4 px-6 text-center text-emerald-400 font-medium">0.1939</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="px-6 py-3 border-t border-white/5">
+          <p class="text-zinc-600 text-xs">Table 1: Comparison on high-conductivity OOD test set. Geometry metrics
+            (Curve, IoU) and Image Fidelity metrics (PSNR, LPIPS) are reported.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== CITATION ===================== -->
+  <section id="citation" class="relative py-24 px-6">
+    <div class="max-w-4xl mx-auto">
+      <div class="fade-up">
+        <span class="section-tag">Citation</span>
+        <h2 class="font-serif-title text-3xl md:text-5xl tracking-tight text-white mt-4 mb-4">
+          Cite Our Work
+        </h2>
+        <p class="text-zinc-400 text-base md:text-lg font-light leading-relaxed mb-10 max-w-2xl">
+          If you find PCFlow useful in your research, please consider citing:
+        </p>
+      </div>
+
+      <div class="fade-up code-block p-6 relative">
+        <button class="copy-btn" onclick="copyCode(this)">
+          <i data-lucide="copy" class="w-3.5 h-3.5"></i> Copy
+        </button>
+        <pre class="text-zinc-300 text-xs md:text-sm">@article{pcflow2026,
+  title={PCFlow: Physics-Conditioned Flow Matching for GPR Pipeline Synthesis},
+  author={Author Name and Collaborator Name},
+  journal={arXiv preprint arXiv:XXXX.XXXXX},
+  year={2026}
+}</pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== FOOTER ===================== -->
+  <footer class="border-t border-white/5 py-12 px-6">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+      <div class="flex items-center gap-2.5 text-zinc-500 text-sm">
+        <div class="w-6 h-6 rounded-md bg-emerald-500/20 flex items-center justify-center">
+          <i data-lucide="workflow" class="w-3 h-3 text-emerald-400"></i>
+        </div>
+        PCFlow © 2026
+      </div>
+      <div class="flex items-center gap-6">
+        <a href="https://github.com/GeometryFu/PCFlow" target="_blank"
+          class="text-zinc-600 hover:text-zinc-300 transition-colors text-sm flex items-center gap-1.5">
+          <i data-lucide="github" class="w-4 h-4"></i> GitHub
+        </a>
+        <a href="https://arxiv.org/abs/XXXX.XXXXX" target="_blank"
+          class="text-zinc-600 hover:text-zinc-300 transition-colors text-sm flex items-center gap-1.5">
+          <i data-lucide="file-text" class="w-4 h-4"></i> Paper
+        </a>
+        <a href="https://huggingface.co/xxx/PCFlow" target="_blank"
+          class="text-zinc-600 hover:text-zinc-300 transition-colors text-sm flex items-center gap-1.5">
+          <i data-lucide="box" class="w-4 h-4"></i> Weights
+        </a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Toast notification -->
+  <div id="toast" class="toast">
+    <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i>
+    <span id="toast-text">Copied!</span>
+  </div>
+
+  <!-- ===================== SCRIPTS ===================== -->
+  <script>
+    // Initialize Lucide icons
+    lucide.createIcons();
+
+    // Copy code functionality
+    function copyCode(btn) {
+      const pre = btn.closest('.code-block').querySelector('pre');
+      const text = pre.textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        btn.classList.add('copied');
+        btn.innerHTML = '<i data-lucide="check" class="w-3.5 h-3.5"></i> Copied!';
+        lucide.createIcons();
+        showToast('Code copied to clipboard!');
+        setTimeout(() => {
+          btn.classList.remove('copied');
+          btn.innerHTML = '<i data-lucide="copy" class="w-3.5 h-3.5"></i> Copy';
+          lucide.createIcons();
+        }, 2000);
+      });
+    }
+
+    // Toast notification
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toast-text').textContent = message;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2500);
+    }
+
+    // Scroll fade-in animation
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+        }
+      });
+    }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+
+    document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
+
+    // Smooth scroll for nav links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      });
+    });
+  </script>
+</body>
+
+</html>
