@@ -390,16 +390,19 @@
   <section class="relative py-20 px-6">
     <div class="max-w-6xl mx-auto fade-up">
       <!-- 👇 替换为论文 teaser 图 👇 -->
-      <img src="assets/images/teaser.png" alt="Teaser Figure"
+      <img src="assets/images/trains.png" alt="Teaser Figure"
         class="w-full rounded-2xl border border-white/5 shadow-2xl"
         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
       <div class="img-placeholder w-full h-64 md:h-96 hidden rounded-2xl">
         <i data-lucide="image" class="w-10 h-10 mb-3"></i>
-        <span>teaser.png — GPR B-scan synthesis results comparison</span>
+        <span>trains.png — GPR B-scan synthesis results comparison</span>
       </div>
       <p class="fig-caption">
-        Figure 1: PCFlow generates GPR B-scans with accurate hyperbolic response geometry and high visual fidelity, even
-        under out-of-distribution scenarios.
+        Figure 1: Training evolution of PCFlow on fixed validation samples.
+        Weak target-response structures appear at 0.5K iterations, and the dominant hyperbolic response becomes clear by
+        1K iterations.
+        Around 2K--2.5K iterations, secondary reflection branches and multi-return structures are gradually formed.
+        Later iterations mainly improve waveform sharpness, background smoothness, and overall radargram fidelity.
       </p>
     </div>
   </section>
