@@ -1,4 +1,3 @@
-
 <div align="center">
 
 # PCFlow
@@ -10,7 +9,7 @@
 [![License](https://img.shields.io/badge/License-Apache_2.0-green.svg)](LICENSE)
 [![Language](https://img.shields.io/badge/Lang-English-blue.svg)](README.md) [![Language](https://img.shields.io/badge/Lang-中文-red.svg)](README_CN.md)
 
-🔥 **PCFlow** is a framework for fast Ground-Penetrating Radar (GPR) B-scan synthesis, based on Maxwell-informed condition field-guided flow matching, achieving a unity of high visual fidelity and strong physical consistency.
+🔥 **PCFlow** 是一个用于探地雷达（GPR）B-scan快速合成的框架，基于麦克斯韦物理条件场引导的流匹配实现，实现了高视觉保真度与强物理一致性的统一。
 
 <p float="center">
   <img src="assets/pipeline.png" width="90%" />
@@ -18,36 +17,36 @@
 
 </div>
 
-## 📋 Table of Contents
+## 📋 目录
 
-- [🚀 Quick Start](#-quick-start)
-- [📦 Installation](#-installation)
-- [🧠 Inference](#-inference)
-- [🏋️ Training](#️-training)
-- [📖 Paper](#-paper)
+- [🚀 快速开始](#-快速开始)
+- [📦 环境安装](#-环境安装)
+- [🧠 推理](#-推理)
+- [🏋️ 训练](#️-训练)
+- [📖 论文](#-论文)
 
-## 🚀 Quick Start
+## 🚀 快速开始
 
-1️⃣ Clone the repository
+1️⃣ 克隆仓库
 ```bash
 git clone https://github.com/GeometryFu/PCFlow.git
 cd PCFlow
 ```
 
-2️⃣ Create environment & Install dependencies
+2️⃣ 创建环境 & 安装依赖
 ```bash
 conda create -n pcflow python=3.10 -y
 conda activate pcflow
 pip install -r requirements.txt
 ```
 
-3️⃣ Download pretrained weights (HuggingFace)
+3️⃣ 下载预训练权重（HuggingFace）
 ```bash
 mkdir -p checkpoints
 # wget -P checkpoints https://huggingface.co/xxx/PCFlow/resolve/main/pcflow_base.pth
 ```
 
-4️⃣ Run inference 🎉
+4️⃣ 运行推理 🎉
 ```bash
 python inference.py \
     --config configs/pcflow_base.yaml \
@@ -56,7 +55,7 @@ python inference.py \
     --output results/
 ```
 
-📷 Expected Output
+📷 预期输出
 
 ```
 ✅ Loading checkpoint from checkpoints/pcflow_base.pth
@@ -67,42 +66,42 @@ python inference.py \
 ⏱  Inference time: 0.42s (single GPU)
 ```
 
-## 📦 Installation
+## 📦 环境安装
 
-### Requirements
+### 依赖项
 
 - Python >= 3.10
 - PyTorch >= 2.1
-- CUDA >= 11.8 (Recommended)
+- CUDA >= 11.8（推荐）
 
-### Install
+### 安装
 
 ```bash
-# Option 1: pip
+# 方式一：pip
 pip install -r requirements.txt
 
-# Option 2: Editable install (recommended for development)
+# 方式二：editable 安装（开发推荐）
 pip install -e .
 ```
 
-### Verify Installation
+### 验证安装
 
 ```bash
 python -c "import pcflow; print(pcflow.__version__)"
-# Output: 0.1.0
+# 输出: 0.1.0
 ```
 
-## 🧠 Inference
+## 🧠 推理
 
 ```bash
-# Generate a single B-scan from physical condition parameters
+# 基于物理条件参数生成单张 B-scan
 python inference.py \
     --config configs/pcflow_base.yaml \
     --checkpoint checkpoints/pcflow_base.pth \
     --condition path/to/your/params.yaml \
     --output results/
 
-# Batch generation (provide a folder of conditions)
+# 批量生成（提供参数文件夹）
 python inference.py \
     --config configs/pcflow_base.yaml \
     --checkpoint checkpoints/pcflow_base.pth \
@@ -110,36 +109,36 @@ python inference.py \
     --output results/
 ```
 
-### Full Argument List
+### 完整参数说明
 
-| Argument          | Type  | Default                    | Description                              |
-| ----------------- | ----- | -------------------------- | ---------------------------------------- |
-| `--config`        | str   | `configs/pcflow_base.yaml` | Path to config file                      |
-| `--checkpoint`    | str   | Required                   | Path to model checkpoint                 |
-| `--condition`     | str   | None                       | Path to a single physical condition file |
-| `--condition_dir` | str   | None                       | Path to a folder of physical conditions  |
-| `--output`        | str   | `results/`                 | Output directory                         |
-| `--device`        | str   | `cuda`                     | Device for inference                     |
-| `--seed`          | int   | `42`                       | Random seed                              |
-| `--num_samples`   | int   | `1`                        | Number of samples per condition          |
-| `--cfg_scale`     | float | `2.5`                      | Classifier-Free Guidance scale           |
+| 参数              | 类型  | 默认值                     | 说明                              |
+| ----------------- | ----- | -------------------------- | --------------------------------- |
+| `--config`        | str   | `configs/pcflow_base.yaml` | 配置文件路径                      |
+| `--checkpoint`    | str   | 必填                       | 模型权重路径                      |
+| `--condition`     | str   | None                       | 单个物理条件参数文件路径          |
+| `--condition_dir` | str   | None                       | 批量物理条件参数文件夹            |
+| `--output`        | str   | `results/`                 | 输出目录                          |
+| `--device`        | str   | `cuda`                     | 推理设备                          |
+| `--seed`          | int   | `42`                       | 随机种子                          |
+| `--num_samples`   | int   | `1`                        | 每个条件的采样数量                |
+| `--cfg_scale`     | float | `2.5`                      | Classifier-Free Guidance 缩放系数 |
 
-## 🏋️ Training
+## 🏋️ 训练
 
 ```bash
-# Single GPU
+# 单卡训练
 python train.py --config configs/pcflow_base.yaml
 
-# Multi-GPU (Recommended)
+# 多卡训练（推荐）
 torchrun --nproc_per_node=4 train.py --config configs/pcflow_base.yaml
 
-# Resume training
+# 恢复训练
 python train.py --config configs/pcflow_base.yaml --resume checkpoints/pcflow_latest.pth
 ```
 
-### Dataset Preparation
+### 数据集准备
 
-Please organize your gprMax simulation dataset as follows (including condition parameters and corresponding B-scans):
+请将 gprMax 模拟数据集组织为如下结构（包含条件参数与对应的 B-scan）：
 
 ```
 data/
@@ -156,9 +155,9 @@ data/
     └── metadata.csv
 ```
 
-Modify the `data.root` field in `configs/pcflow_base.yaml` to point to your data path.
+修改 `configs/pcflow_base.yaml` 中的 `data.root` 字段指向你的数据路径。
 
-## 📖 Paper
+## 📖 论文
 
 ### PCFlow: Physics-Conditioned Flow Matching for GPR Pipeline Synthesis
 
@@ -177,3 +176,4 @@ Modify the `data.root` field in `configs/pcflow_base.yaml` to point to your data
 Made with ❤️ by the PCFlow Team
 
 </div>
+
