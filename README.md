@@ -9,6 +9,8 @@
 
 🔥 **PCFlow** is a framework for fast Ground-Penetrating Radar (GPR) B-scan synthesis, based on Maxwell-informed condition field-guided flow matching, achieving a unity of high visual fidelity and strong physical consistency.
 
+### ⚡ Traditional numerical simulation: minutes / hours → PCFlow: seconds
+
 <p float="center">
   <img src="assets/pipeline.png" width="90%" />
 </p>

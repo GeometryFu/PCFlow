@@ -9,6 +9,8 @@
 
 🔥 **PCFlow** 是一个用于探地雷达（GPR）B-scan 快速合成的框架，基于麦克斯韦物理条件场引导的流匹配实现，实现了高视觉保真度与强物理一致性的统一。
 
+### ⚡ 传统数值仿真：分钟 / 小时级 → PCFlow：秒级
+
 <p float="center">
   <img src="assets/pipeline.png" width="90%" />
 </p>
