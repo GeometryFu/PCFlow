@@ -2,200 +2,215 @@
 
 # PCFlow
 
-### Physics-Conditioned Rectified Flow for Ground-Penetrating Radar Imaging
+## Physics-Conditioned Flow Matching for GPR Pipeline Synthesis
 
-[Project page](https://geometryfu.github.io/PCFlow/) · [中文说明](README_CN.md) · [Source](PCFlow/) · [Dataset summary](PCFlow/dataset_split/summary.json)
+[![Paper](https://img.shields.io/badge/Paper-Coming_Soon-b31b1b.svg)](#-paper)
+[![Weights](https://img.shields.io/badge/🤗_Weights-Coming_Soon-yellow.svg)](#-paper)
+[![License](https://img.shields.io/badge/License-Apache_2.0-green.svg)](LICENSE)
+[![Language](https://img.shields.io/badge/Lang-English-blue.svg)](README.md) [![Language](https://img.shields.io/badge/Lang-中文-red.svg)](README_CN.md)
 
-<img src="assets/pipeline.png" width="92%" alt="PCFlow pipeline" />
+🔥 **PCFlow** is a framework for fast Ground-Penetrating Radar (GPR) B-scan synthesis, based on Maxwell-informed condition field-guided flow matching, achieving a unity of high visual fidelity and strong physical consistency.
+
+<p float="center">
+  <img src="assets/pipeline.png" width="90%" />
+</p>
 
 </div>
 
-PCFlow synthesizes 1024 × 1024 ground-penetrating radar (GPR) B-scans from gprMax-style physical scene descriptions. It combines an analytic, Maxwell-informed 26-channel condition encoder with a conditional rectified-flow U-Net operating in the latent space of a frozen SDXL VAE.
+## 📋 Table of Contents
 
-> The executable project is in [`PCFlow/`](PCFlow/). Run all commands below from that directory.
+- [🚀 Quick Start](#-quick-start)
+- [📦 Installation](#-installation)
+- [🧠 Inference](#-inference)
+- [🏋️ Training](#️-training)
+- [📖 Paper](#-paper)
 
-## What is implemented
+## 🚀 Quick Start
 
-- **Physics-conditioned representation:** relative permittivity, conductivity, impedance, attenuation, phase, target geometry, travel-time curves, hyperbola response and target-strength priors are assembled into a 26-channel tensor.
-- **Latent rectified flow:** grayscale radargrams are converted to pseudo-RGB, encoded to `4 × 128 × 128` SDXL-VAE latents, and learned as a straight velocity field from Gaussian noise to the data latent.
-- **Physics-aware U-Net:** the condition is injected at multiple resolutions through grouped Physics-SPADE blocks; attention is applied at the 32 × 32 and 16 × 16 resolutions.
-- **Training utilities:** mixed precision, gradient clipping, exponential moving average (EMA), classifier-free condition dropout, fixed validation samples, CSV logging, loss curves and periodic checkpoints.
-- **Bundled benchmark:** 800 paired gprMax scene files and B-scan images, including train, validation, in-distribution test and stress-test splits plus few-shot subsets.
-
-## Method at a glance
-
-```mermaid
-flowchart LR
-    A[gprMax .in scene] --> B[Scene parser]
-    B --> C[epsilon / sigma maps<br/>and target geometry]
-    C --> D[Maxwell condition encoder<br/>26 channels]
-    E[GPR B-scan] --> F[Pseudo-RGB]
-    F --> G[Frozen SDXL VAE encoder]
-    G --> H[Data latent z1]
-    I[Gaussian noise z0] --> J[Linear interpolation zt]
-    H --> J
-    D --> K[Conditional U-Net velocity field]
-    J --> K
-    K --> L[Euler / Heun ODE sampling]
-    L --> M[Frozen SDXL VAE decoder]
-    M --> N[Synthesized B-scan]
-```
-
-For training, the model samples `t ~ U(0, 1)`, constructs `z_t = (1-t) z_0 + t z_1`, and predicts the constant target velocity `v = z_1 - z_0`. The loss is MSE with a linear depth weight from 1.0 to 3.0 so deeper, weaker responses receive more emphasis.
-
-## Repository layout
-
-```text
-PCFlow/                         # executable source root
-├── configs/
-│   ├── model_gpr.yaml          # VAE, U-Net and 26-channel encoder
-│   ├── train_gpr.yaml          # main training preset
-│   └── train_gpr_dataset_split.yaml
-├── data/gpr_dataset/           # dataset, index builder and .in parser
-├── dataset_split/              # bundled paired benchmark and split metadata
-├── models/                     # condition encoder, U-Net, VAE and pseudo-RGB
-├── utils/                      # solvers, EMA, logging, plotting and I/O
-├── train.py                    # training entry point
-├── sample.py                   # checkpoint sampling entry point
-└── requirements.txt
-docs/index.html                 # GitHub Pages project site
-assets/                         # README figures
-```
-
-## Installation
-
-Python 3.10 and a CUDA-capable PyTorch installation are recommended. Choose the PyTorch build appropriate for your CUDA version from the [official PyTorch installer](https://pytorch.org/get-started/locally/), then install the remaining dependencies.
+1️⃣ Clone the repository and enter the executable source directory
 
 ```bash
 git clone https://github.com/GeometryFu/PCFlow.git
 cd PCFlow/PCFlow
+```
 
+2️⃣ Create an environment and install dependencies
+
+```bash
 conda create -n pcflow python=3.10 -y
 conda activate pcflow
 
-# Install the CUDA-enabled PyTorch build suitable for your system first.
+# Install a CUDA-enabled PyTorch build suitable for your system first
 pip install -r requirements.txt
 ```
 
-The frozen VAE is loaded from `stabilityai/sdxl-vae` by default. For offline use, download it in advance and change `vae.pretrained_path` in [`configs/model_gpr.yaml`](PCFlow/configs/model_gpr.yaml) to the local directory.
-
-## Dataset
-
-The bundled dataset contains 800 paired samples:
-
-| Split | Samples | Purpose |
-|---|---:|---|
-| `train` | 443 | Main training set and source for few-shot subsets |
-| `val` | 88 | Velocity-loss validation and fixed visual samples |
-| `test_id` | 70 | In-distribution evaluation |
-| `stress_test` | 199 | High-conductivity stress testing |
-
-Target classes are `steel_free_space` (403), `pvc_water` (204), and `pvc_free_space` (193). See [`summary.json`](PCFlow/dataset_split/summary.json) for the complete statistics.
-
-Each JSONL record pairs a radargram with a gprMax scene:
-
-```json
-{
-  "id": "pvc_free_space_r0.03_eps10_sig0.005_x1.27_y0.4",
-  "image_path": "dataset_split/images/train/pvc_free_space_r0.03_eps10_sig0.005_x1.27_y0.4.png",
-  "in_path": "dataset_split/conditions/train/pvc_free_space_r0.03_eps10_sig0.005_x1.27_y0.4.in"
-}
-```
-
-To index a similarly structured custom dataset:
+3️⃣ Start training with the bundled dataset
 
 ```bash
-python data/gpr_dataset/build_index.py \
-  --images_dir path/to/images \
-  --ins_dir path/to/conditions \
-  --out_jsonl path/to/train.jsonl
-```
-
-Then update the paths under `data` in a training YAML file. Image and `.in` filenames must share the same stem.
-
-## Training
-
-### 1. Select configuration
-
-- [`configs/model_gpr.yaml`](PCFlow/configs/model_gpr.yaml) defines the SDXL VAE, U-Net and physical encoder.
-- [`configs/train_gpr.yaml`](PCFlow/configs/train_gpr.yaml) is the main 50,000-step preset: batch size 8, AdamW at `5e-5`, AMP, EMA `0.999`, 10% condition dropout and 50-step Heun validation sampling.
-- [`configs/train_gpr_dataset_split.yaml`](PCFlow/configs/train_gpr_dataset_split.yaml) is an alternate preset with learning rate `1e-4`, 30-step Heun sampling and a separate output directory.
-
-Adjust `batch_size` and `num_workers` for your machine before starting.
-
-### 2. Start training
-
-```bash
-# Main preset
-python train.py
-
-# Explicit configuration files
 python train.py \
-  --model-config configs/model_gpr.yaml \
-  --train-config configs/train_gpr_dataset_split.yaml
+    --model-config configs/model_gpr.yaml \
+    --train-config configs/train_gpr.yaml
 ```
 
-The current entry point is single-process and uses the device declared in the training YAML (`cuda` by default).
+4️⃣ Run inference with a trained checkpoint 🎉
 
-### 3. Monitor artifacts
+```bash
+python sample.py \
+    --ckpt outputs/gpr_cfm/checkpoints/ckpt_0050000.pt \
+    --image dataset_split/images/test_id/steel_free_space_r0.08_eps10_sig0.005_x2.29_y0.65.png \
+    --infile dataset_split/conditions/test_id/steel_free_space_r0.08_eps10_sig0.005_x2.29_y0.65.in \
+    --out outputs/sample.png
+```
 
-Artifacts are written under `output.workdir`:
+📷 Example training output
 
 ```text
-outputs/gpr_cfm/
-├── checkpoints/     # ckpt_XXXXXXX.pt
-├── samples_fixed/   # repeated validation cases for visual comparison
-├── metrics/         # train_log.csv and fixed_val_indices.json
-└── curves/          # loss_curve.png
+Resume disabled; training from scratch.
+Step=50 | Total=...
+[VAL] Step=1000 | ValLoss=... | ValMSE=...
+Saved checkpoint at step 1000
 ```
 
-Logging occurs every 50 steps, fixed samples every 500 steps, and validation/checkpointing every 1,000 steps in the main preset.
+## 📦 Installation
 
-### 4. Resume
+### Requirements
 
-Edit the `resume` block in the selected training YAML:
+- Python >= 3.10
+- PyTorch >= 2.1
+- CUDA-capable GPU recommended
+
+### Install
+
+Choose the PyTorch build matching your CUDA environment from the [official PyTorch installer](https://pytorch.org/get-started/locally/), then install the project dependencies:
+
+```bash
+cd PCFlow/PCFlow
+pip install -r requirements.txt
+```
+
+The frozen VAE is loaded from `stabilityai/sdxl-vae` by default. For offline use, download it in advance and set `vae.pretrained_path` in `configs/model_gpr.yaml` to its local directory.
+
+### Verify Installation
+
+```bash
+python train.py --help
+python sample.py --help
+```
+
+## 🧠 Inference
+
+```bash
+# Generate from an explicit image / gprMax .in pair
+python sample.py \
+    --model-config configs/model_gpr.yaml \
+    --train-config configs/train_gpr.yaml \
+    --ckpt outputs/gpr_cfm/checkpoints/ckpt_0050000.pt \
+    --image path/to/reference.png \
+    --infile path/to/scene.in \
+    --out outputs/sample.png
+
+# Or use the first paired record in a JSONL index
+python sample.py \
+    --ckpt outputs/gpr_cfm/checkpoints/ckpt_0050000.pt \
+    --jsonl dataset_split/jsonl/test_id.jsonl \
+    --out outputs/sample.png
+```
+
+The sampler rebuilds a physics condition from the scene, uses EMA weights when available, integrates the rectified-flow ODE with the configured Euler or Heun solver, and decodes the result through the SDXL VAE.
+
+### Full Argument List
+
+| Argument | Required | Default | Description |
+| --- | --- | --- | --- |
+| `--model-config` | No | `configs/model_gpr.yaml` | Model and physics-encoder configuration |
+| `--train-config` | No | `configs/train_gpr.yaml` | Device, solver and sampling configuration |
+| `--ckpt` | Yes | — | Trained `.pt` checkpoint |
+| `--jsonl` | No | — | JSONL index; the current script reads its first record |
+| `--image` | With `--infile` | — | Paired reference B-scan path required by the current CLI |
+| `--infile` | With `--image` | — | gprMax-style physical scene file |
+| `--out` | Yes | — | Output image path |
+
+## 🏋️ Training
+
+```bash
+# Main single-process training preset
+python train.py
+
+# Select the alternate dataset-split preset
+python train.py \
+    --model-config configs/model_gpr.yaml \
+    --train-config configs/train_gpr_dataset_split.yaml
+```
+
+Training is controlled by two YAML files:
+
+- `configs/model_gpr.yaml`: frozen SDXL VAE, 26-channel Maxwell condition encoder and conditional U-Net architecture.
+- `configs/train_gpr.yaml`: dataset paths, optimizer, training schedule, EMA, validation, checkpoint and ODE solver settings.
+
+The training loop performs the following steps:
+
+1. Parse each gprMax `.in` file into permittivity, conductivity and geometry maps.
+2. Build a 26-channel physics condition and downsample it to latent resolution.
+3. Convert the grayscale B-scan to pseudo-RGB and encode it as an SDXL-VAE latent `z1`.
+4. Sample Gaussian noise `z0` and `t ~ U(0,1)`, then construct `zt = (1-t)z0 + tz1`.
+5. Train the U-Net to predict `v = z1 - z0` with depth-weighted MSE. The main preset also uses 10% condition dropout, AMP, gradient clipping and EMA.
+
+The main preset runs for 50,000 steps with batch size 8 and AdamW learning rate `5e-5`. It logs every 50 steps, samples fixed validation cases every 500 steps, and validates/saves every 1,000 steps. Adjust `batch_size` and `num_workers` for your hardware. The current entry point is single-process and uses the device configured in YAML.
+
+### Resume Training
+
+Resume is configured in the selected training YAML rather than through a command-line `--resume` flag:
 
 ```yaml
 train:
   resume:
     enabled: true
-    checkpoint_path: "ckpt_0010000.pt"  # null selects the newest checkpoint
+    checkpoint_path: "ckpt_0010000.pt"  # null automatically selects the latest
 ```
 
-The current implementation restores the U-Net, EMA weights and step counter. Optimizer and AMP-scaler states are stored in checkpoints but are not restored by `setup_resume_training`.
+The current implementation restores the U-Net, EMA weights and step counter.
 
-## Sampling
+### Dataset Preparation
 
-Use an EMA checkpoint with either an explicit pair or a JSONL file:
+The bundled 800-scene dataset is already indexed as follows:
+
+```text
+dataset_split/
+├── images/          # train / val / test_id / stress_test B-scan PNGs
+├── conditions/      # paired gprMax .in files
+├── jsonl/           # indexes consumed by the data loader
+│   └── fewshot/     # 50 / 100 / 200 / 300 / full-443 subsets
+├── metadata/        # split metadata tables
+└── summary.json     # dataset statistics
+```
+
+For a custom paired dataset, image and `.in` filenames must share the same stem:
 
 ```bash
-# Explicit paired files
-python sample.py \
-  --ckpt outputs/gpr_cfm/checkpoints/ckpt_0050000.pt \
-  --image dataset_split/images/test_id/steel_free_space_r0.08_eps10_sig0.005_x2.29_y0.65.png \
-  --infile dataset_split/conditions/test_id/steel_free_space_r0.08_eps10_sig0.005_x2.29_y0.65.in \
-  --out outputs/sample.png
-
-# The current sampler reads the first record in the JSONL file
-python sample.py \
-  --ckpt outputs/gpr_cfm/checkpoints/ckpt_0050000.pt \
-  --jsonl dataset_split/jsonl/test_id.jsonl \
-  --out outputs/sample.png
+python data/gpr_dataset/build_index.py \
+    --images_dir path/to/images \
+    --ins_dir path/to/conditions \
+    --out_jsonl path/to/train.jsonl
 ```
 
-The standalone sampler uses the solver name and step count in the selected training configuration. Its current CLI expects a paired image path together with the `.in` path (or obtains both from JSONL).
+Update `data.train_jsonl`, `data.val_jsonl` and the other split paths in the selected training YAML. Training outputs are written under `output.workdir`, including checkpoints, fixed samples, CSV logs and loss curves.
 
-## Implementation notes
+## 📖 Paper
 
-- The source currently targets one cylindrical buried object per scene, matching the bundled dataset convention.
-- Model training uses an edge-preserving condition downsampler; the standalone sampler currently uses average pooling for its condition tensor.
-- Physics Flow Alignment (PFA) modules are defined for checkpoint compatibility but disabled in `ResBlock.forward`; active conditioning is provided by concatenation and Physics-SPADE.
-- No pretrained PCFlow checkpoint or paper identifier is published in this repository at present, so this README does not advertise placeholder links.
+### PCFlow: Physics-Conditioned Flow Matching for GPR Pipeline Synthesis
 
-## License
+📄 **Paper**: Coming soon
 
-The repository currently contains two different license notices: the root [`LICENSE`](LICENSE) is Apache-2.0, while [`PCFlow/LICENSE`](PCFlow/LICENSE) states CC-BY-NC-4.0 for the source and bundled dataset. Please confirm the intended terms with the project authors before reuse.
+🏠 **Project Page**: [https://GeometryFu.github.io/PCFlow](https://GeometryFu.github.io/PCFlow)
 
-## Citation
+🤗 **Model Weights**: Coming soon
 
-No publication metadata is included in the repository yet. If you use the code, cite the repository URL and commit hash until an official citation is provided.
+<div align="center">
+
+<img src="assets/mascot.png" width="120" alt="PCFlow Mascot"/>
+
+**PCFlow** is released under the [Apache 2.0 License](LICENSE).
+
+Made with ❤️ by the PCFlow Team
+
+</div>
