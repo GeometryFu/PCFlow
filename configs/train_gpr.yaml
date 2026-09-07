@@ -1,0 +1,38 @@
+# Training configuration for the main PCFlow experiments.
+# Run from the repository root:  python train.py
+
+data:
+  train_jsonl: "dataset_split/jsonl/train.jsonl"
+  val_jsonl: "dataset_split/jsonl/val.jsonl"
+  test_jsonl: "dataset_split/jsonl/test_id.jsonl"
+  stress_jsonl: "dataset_split/jsonl/stress_test.jsonl"
+  image_size: 1024
+
+train:
+  val_every: 1000
+  val_batches: 16
+  fixed_sample_count: 8
+  seed: 0
+  device: "cuda"
+  cfg_dropout_prob: 0.1
+  batch_size: 8
+  num_workers: 32
+  lr: 5.0e-5
+  weight_decay: 1.0e-5
+  max_steps: 50000
+  log_every: 50
+  save_every: 1000
+  sample_every: 500
+  amp: true
+  ema_decay: 0.999
+  resume:
+    enabled: false          # set to true and provide checkpoint_path to resume
+    checkpoint_path: null   # e.g. "ckpt_0001000.pt"; null auto-picks the newest
+
+solver:
+  name: "heun"   # "euler" or "heun"
+  steps: 50
+  cfg_scale: 3.0
+
+output:
+  workdir: "outputs/gpr_cfm"

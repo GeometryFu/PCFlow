@@ -1,0 +1,40 @@
+{
+  "copy_mode": true,
+  "surface_y": 1.0,
+  "total": 800,
+  "split_counts": {
+    "train": 443,
+    "stress_test": 199,
+    "val": 88,
+    "test_id": 70
+  },
+  "target_type_counts": {
+    "steel_free_space": 403,
+    "pvc_water": 204,
+    "pvc_free_space": 193
+  },
+  "soil_sig_counts": {
+    "0.001": 210,
+    "0.05": 199,
+    "0.005": 196,
+    "0.02": 195
+  },
+  "depth_class_counts": {
+    "D2_medium": 379,
+    "D3_deep": 272,
+    "D1_shallow": 149
+  },
+  "hard_counts_by_split": {
+    "stress_test": 199,
+    "test_id": 50,
+    "train": 334,
+    "val": 64
+  },
+  "fewshot_files": [
+    "train_100shot.csv",
+    "train_200shot.csv",
+    "train_300shot.csv",
+    "train_50shot.csv",
+    "train_full_443.csv"
+  ]
+}

@@ -1,0 +1,15 @@
+* text=auto
+
+*.py text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.json text eol=lf
+*.jsonl text eol=lf
+*.csv text eol=lf
+*.in text eol=lf
+*.md text eol=lf
+*.txt text eol=lf
+*.html text eol=lf
+LICENSE text eol=lf
+
+*.png binary

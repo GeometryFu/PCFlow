@@ -1,0 +1,31 @@
+# Model configuration for PCFlow (conditional rectified flow in SDXL-VAE latent space).
+
+vae:
+  pretrained_path: "stabilityai/sdxl-vae"  # HuggingFace repo id, or a local directory
+  torch_dtype: "fp32"
+  use_mean: true
+
+model:
+  in_channels: 4        # SDXL latent channels
+  cond_channels: 26     # physics-condition channels produced by the encoder
+  time_dim: 128
+  base_channels: 128
+  dropout: 0.1
+
+encoder:
+  grid_spacing: [0.00390625, 0.001171875]
+  freq: 4.0e8
+  max_layers: 5
+  max_interfaces: 4
+  # Fixed normalization ranges (match the dataset statistics).
+  norm:
+    eps_r_min: 1.0
+    eps_r_max: 25.0
+    sigma_min: 0.0
+    sigma_max: 0.05
+    alpha_min: 0.0
+    alpha_max: 5.0
+    beta_min: 0.0
+    beta_max: 200.0
+    eta_min: 0.0
+    eta_max: 1.0

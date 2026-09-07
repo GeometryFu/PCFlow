@@ -1,0 +1,32 @@
+PCFlow Dataset License
+======================
+
+Copyright (c) 2026 PCFlow Team
+
+SPDX-License-Identifier: CC-BY-4.0
+
+All dataset files in this directory and its subdirectories, including the
+paired GPR B-scan images, gprMax condition files, JSONL indexes, metadata, and
+dataset statistics, are licensed under the Creative Commons Attribution 4.0
+International License (CC BY 4.0).
+
+You are free to share and adapt the dataset for any purpose, including
+commercial use, provided that you give appropriate credit, provide a link to
+the license, and indicate whether changes were made. You may not apply legal
+terms or technological measures that restrict others from doing anything the
+license permits.
+
+Suggested attribution:
+
+  PCFlow GPR Dataset, PCFlow Team,
+  https://github.com/GeometryFu/PCFlow
+
+License deed:
+  https://creativecommons.org/licenses/by/4.0/
+
+Full legal code:
+  https://creativecommons.org/licenses/by/4.0/legalcode
+
+No warranties are given. This dataset license does not apply to the PCFlow
+source code outside this directory, which is licensed separately under the
+Apache License 2.0 in the repository-root LICENSE file.

@@ -1,0 +1,15 @@
+#domain: 4 1.2 0.0025
+#dx_dy_dz: 0.0025 0.0025 0.0025
+#time_window: 40e-9
+#waveform: ricker 1 500e6 my_pulse
+#hertzian_dipole: z 0.1 1.15 0 my_pulse
+#rx: 0.15 1.15 0
+#src_steps: 0.02 0 0
+#rx_steps: 0.02 0 0
+#material: 1 1.6e10 1 0 steel
+#material: 3 1e-11 1 0 pvc
+#material: 80 0.01 1 0 water
+#material: 10 0.005 1 0 soil
+#box: 0 0 0 4 1.15 0.0025 soil
+#cylinder: 2.58 0.3 0 2.58 0.3 0.0025 0.1 pvc
+#cylinder: 2.58 0.3 0 2.58 0.3 0.0025 0.09000000000000001 free_space

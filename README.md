@@ -31,7 +31,7 @@
 
 ```bash
 git clone https://github.com/GeometryFu/PCFlow.git
-cd PCFlow/PCFlow
+cd PCFlow
 ```
 
 2️⃣ Create an environment and install dependencies
@@ -84,7 +84,7 @@ Saved checkpoint at step 1000
 Choose the PyTorch build matching your CUDA environment from the [official PyTorch installer](https://pytorch.org/get-started/locally/), then install the project dependencies:
 
 ```bash
-cd PCFlow/PCFlow
+cd PCFlow
 pip install -r requirements.txt
 ```
 
@@ -181,7 +181,8 @@ dataset_split/
 ├── jsonl/           # indexes consumed by the data loader
 │   └── fewshot/     # 50 / 100 / 200 / 300 / full-443 subsets
 ├── metadata/        # split metadata tables
-└── summary.json     # dataset statistics
+├── summary.json     # dataset statistics
+└── LICENSE          # CC BY 4.0 dataset license
 ```
 
 For a custom paired dataset, image and `.in` filenames must share the same stem:
@@ -209,7 +210,8 @@ Update `data.train_jsonl`, `data.val_jsonl` and the other split paths in the sel
 
 <img src="assets/mascot.png" width="120" alt="PCFlow Mascot"/>
 
-**PCFlow** is released under the [Apache 2.0 License](LICENSE).
+**PCFlow code** is released under the [Apache 2.0 License](LICENSE).<br>
+The bundled dataset is released under [CC BY 4.0](dataset_split/LICENSE).
 
 Made with ❤️ by the PCFlow Team
 

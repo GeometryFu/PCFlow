@@ -209,6 +209,25 @@ tempCodeRunnerFile.py
 # PyPI configuration file
 .pypirc
 
+# PCFlow training and inference artifacts
+outputs/
+outputs_new/
+checkpoints/
+runs/
+wandb/
+*.pt
+*.pth
+
+# Dataset extraction leftovers
+*.tmp
+
+# Common local editor and OS files
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
 # Marimo
 marimo/_static/
 marimo/_lsp/

@@ -31,7 +31,7 @@
 
 ```bash
 git clone https://github.com/GeometryFu/PCFlow.git
-cd PCFlow/PCFlow
+cd PCFlow
 ```
 
 2️⃣ 创建环境并安装依赖
@@ -84,7 +84,7 @@ Saved checkpoint at step 1000
 请先从 [PyTorch 官方安装页](https://pytorch.org/get-started/locally/) 选择与本机 CUDA 环境匹配的版本，再安装项目依赖：
 
 ```bash
-cd PCFlow/PCFlow
+cd PCFlow
 pip install -r requirements.txt
 ```
 
@@ -181,7 +181,8 @@ dataset_split/
 ├── jsonl/           # 数据加载器使用的索引
 │   └── fewshot/     # 50 / 100 / 200 / 300 / full-443 子集
 ├── metadata/        # 各划分元数据表
-└── summary.json     # 数据集统计
+├── summary.json     # 数据集统计
+└── LICENSE          # CC BY 4.0 数据集许可证
 ```
 
 自定义配对数据的图片和 `.in` 文件必须同名（扩展名除外）：
@@ -209,7 +210,8 @@ python data/gpr_dataset/build_index.py \
 
 <img src="assets/mascot.png" width="120" alt="PCFlow Mascot"/>
 
-**PCFlow** is released under the [Apache 2.0 License](LICENSE).
+**PCFlow 代码**采用 [Apache 2.0 License](LICENSE)。<br>
+内置数据集采用 [CC BY 4.0](dataset_split/LICENSE)。
 
 Made with ❤️ by the PCFlow Team
 
