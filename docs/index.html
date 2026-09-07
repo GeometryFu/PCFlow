@@ -1,806 +1,394 @@
-<!DOCTYPE html>
-<html lang="en" class="scroll-smooth">
-
+<!doctype html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#07110f">
+  <meta name="description" content="PCFlow is a physics-conditioned rectified-flow model for synthesizing GPR B-scans from gprMax scene descriptions.">
+  <meta property="og:title" content="PCFlow — Physics-Conditioned GPR Synthesis">
+  <meta property="og:description" content="A 26-channel Maxwell condition encoder guides rectified flow in the SDXL-VAE latent space.">
+  <meta property="og:image" content="assets/images/pipeline.png">
   <title>PCFlow — Physics-Conditioned GPR Synthesis</title>
-  <meta name="description"
-    content="PCFlow: A physics-conditioned flow matching framework for fast and physically consistent GPR B-scan synthesis." />
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:wght@400;500;600;700&display=swap"
-    rel="stylesheet" />
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['Inter', 'sans-serif'],
-            serif: ['Instrument Serif', 'serif'],
-          },
-        },
-      },
-    }
-  </script>
   <style>
+    :root {
+      --ink: #eef8f5;
+      --muted: #9bb0aa;
+      --dim: #6c817b;
+      --bg: #07110f;
+      --panel: #0c1916;
+      --line: rgba(171, 230, 210, .14);
+      --green: #80efc1;
+      --green-deep: #153f32;
+      --amber: #ffc978;
+      --max: 1180px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
     body {
-      font-family: 'Inter', sans-serif;
-      background: #fafafa;
-      /* 浅灰背景 */
-      color: #18181b;
-      /* 深色文字 */
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 78% 2%, rgba(36, 150, 112, .16), transparent 28rem),
+        radial-gradient(circle at 5% 45%, rgba(34, 96, 78, .11), transparent 24rem),
+        var(--bg);
+      font: 400 16px/1.65 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
-
-    .font-serif-title {
-      font-family: 'Instrument Serif', serif;
-    }
-
-    /* Scrollbar */
-    ::-webkit-scrollbar {
-      width: 6px;
-    }
-
-    ::-webkit-scrollbar-track {
-      background: #f4f4f5;
-    }
-
-    ::-webkit-scrollbar-thumb {
-      background: #d4d4d8;
-      border-radius: 3px;
-    }
-
-    ::-webkit-scrollbar-thumb:hover {
-      background: #a1a1aa;
-    }
-
-    /* Code block */
-    .code-block {
-      background: #ffffff;
-      /* 纯白代码块背景 */
-      border: 1px solid #e4e4e7;
-      border-radius: 12px;
-      font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', Consolas, monospace;
-      font-size: 13px;
-      line-height: 1.7;
-      overflow-x: auto;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-    }
-
-    .code-block .comment {
-      color: #6b7280;
-      /* gray-500 */
-    }
-
-    .code-block .command {
-      color: #1f2937;
-      /* gray-800 */
-    }
-
-    .code-block .flag {
-      color: #059669;
-      /* emerald-600 */
-    }
-
-    .code-block .string {
-      color: #d97706;
-      /* amber-600 */
-    }
-
-    .code-block .prompt {
-      color: #9ca3af;
-      /* gray-400 */
-    }
-
-    /* Badge */
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 16px;
-      border-radius: 9999px;
-      font-size: 13px;
-      font-weight: 500;
-      color: #3f3f46;
-      border: 1px solid #e4e4e7;
-      background: #ffffff;
-      backdrop-filter: blur(12px);
-      transition: all 0.3s ease;
-      text-decoration: none;
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-    }
-
-    .badge:hover {
-      border-color: #a1a1aa;
-      background: #f4f4f5;
-    }
-
-    .badge-arxiv {
-      color: #dc2626;
-      border-color: rgba(239, 68, 68, 0.4);
-    }
-
-    .badge-arxiv:hover {
-      border-color: rgba(239, 68, 68, 0.7);
-      background: rgba(239, 68, 68, 0.05);
-    }
-
-    .badge-hf {
-      color: #b45309;
-      border-color: rgba(249, 176, 25, 0.4);
-    }
-
-    .badge-hf:hover {
-      border-color: rgba(249, 176, 25, 0.7);
-      background: rgba(249, 176, 25, 0.05);
-    }
-
-    .badge-gh {
-      color: #18181b;
-      border-color: #d4d4d8;
-    }
-
-    .badge-gh:hover {
-      border-color: #a1a1aa;
-      background: #f4f4f5;
-    }
-
-    .badge-license {
-      color: #059669;
-      border-color: rgba(16, 185, 129, 0.4);
-    }
-
-    .badge-license:hover {
-      border-color: rgba(16, 185, 129, 0.7);
-      background: rgba(16, 185, 129, 0.05);
-    }
-
-    /* Copy button */
-    .copy-btn {
-      position: absolute;
-      top: 12px;
-      right: 12px;
-      background: #f4f4f5;
-      border: 1px solid #e4e4e7;
-      color: #71717a;
-      border-radius: 8px;
-      padding: 5px 10px;
-      font-size: 12px;
-      cursor: pointer;
-      transition: all 0.2s;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    .copy-btn:hover {
-      color: #18181b;
-      border-color: #a1a1aa;
-      background: #ffffff;
-    }
-
-    .copy-btn.copied {
-      color: #059669;
-      border-color: rgba(16, 185, 129, 0.4);
-      background: rgba(16, 185, 129, 0.05);
-    }
-
-    /* Section title decoration */
-    .section-tag {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.15em;
-      text-transform: uppercase;
-      color: #059669;
-    }
-
-    .section-tag::before {
-      content: '';
-      display: block;
-      width: 24px;
-      height: 1px;
-      background: #059669;
-    }
-
-    /* Card */
-    .glass-card {
-      background: #ffffff;
-      border: 1px solid #e4e4e7;
-      border-radius: 16px;
-      transition: all 0.5s ease;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-    }
-
-    .glass-card:hover {
-      background: #ffffff;
-      border-color: #a1a1aa;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    }
-
-    /* Mascot float animation */
-    @keyframes float {
-
-      0%,
-      100% {
-        transform: translateY(0px);
-      }
-
-      50% {
-        transform: translateY(-12px);
-      }
-    }
-
-    .mascot-float {
-      animation: float 4s ease-in-out infinite;
-    }
-
-    /* Glow pulse */
-    @keyframes glow-pulse {
-
-      0%,
-      100% {
-        opacity: 0.3;
-        transform: scale(1);
-      }
-
-      50% {
-        opacity: 0.5;
-        transform: scale(1.05);
-      }
-    }
-
-    .glow-bg {
-      animation: glow-pulse 6s ease-in-out infinite;
-    }
-
-    /* Figure caption */
-    .fig-caption {
-      font-size: 13px;
-      color: #71717a;
-      text-align: center;
-      margin-top: 12px;
-      font-style: italic;
-    }
-
-    /* Fade in animation */
-    .fade-up {
-      opacity: 0;
-      transform: translateY(30px);
-      transition: all 0.8s cubic-bezier(0.2, 0, 0.2, 1);
-    }
-
-    .fade-up.visible {
-      opacity: 1;
-      transform: translateY(0);
-    }
-
-    /* Toast notification */
-    .toast {
+    body::before {
+      content: "";
       position: fixed;
-      bottom: 24px;
-      left: 50%;
-      transform: translateX(-50%) translateY(80px);
-      background: #18181b;
-      border: 1px solid #27272a;
-      color: #f4f4f5;
-      padding: 10px 20px;
-      border-radius: 12px;
-      font-size: 13px;
-      z-index: 999;
-      opacity: 0;
-      transition: all 0.4s cubic-bezier(0.2, 0, 0.2, 1);
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(190, 238, 222, .025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(190, 238, 222, .025) 1px, transparent 1px);
+      background-size: 48px 48px;
+      mask-image: linear-gradient(to bottom, black, transparent 85%);
     }
+    a { color: inherit; }
+    img { display: block; max-width: 100%; }
+    button { font: inherit; }
+    .wrap { width: min(calc(100% - 40px), var(--max)); margin-inline: auto; }
 
-    .toast.show {
-      opacity: 1;
-      transform: translateX(-50%) translateY(0);
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      border-bottom: 1px solid var(--line);
+      background: rgba(7, 17, 15, .82);
+      backdrop-filter: blur(18px);
     }
+    .nav-inner { height: 68px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+    .brand { display: flex; align-items: center; gap: 11px; text-decoration: none; font-weight: 750; letter-spacing: -.02em; }
+    .mark { width: 30px; height: 30px; border: 1px solid rgba(128, 239, 193, .42); border-radius: 9px; display: grid; place-items: center; color: var(--green); background: rgba(128, 239, 193, .08); }
+    .mark svg { width: 18px; }
+    .links { display: flex; align-items: center; gap: 25px; color: var(--muted); font-size: 14px; }
+    .links a { text-decoration: none; transition: color .2s; }
+    .links a:hover { color: var(--ink); }
+    .repo-link { padding: 8px 13px; border: 1px solid var(--line); border-radius: 9px; color: var(--ink) !important; }
 
-    /* Placeholder image styling */
-    .img-placeholder {
-      background: linear-gradient(135deg, #f4f4f5, #ffffff);
-      border: 1px dashed #d4d4d8;
-      border-radius: 12px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      color: #a1a1aa;
-      font-size: 13px;
+    .hero { min-height: 720px; display: grid; align-items: center; padding: 110px 0 90px; overflow: hidden; }
+    .hero-grid { display: grid; grid-template-columns: minmax(0, 1.12fr) minmax(280px, .64fr); align-items: center; gap: 70px; }
+    .eyebrow { display: flex; align-items: center; gap: 10px; color: var(--green); text-transform: uppercase; letter-spacing: .15em; font-size: 12px; font-weight: 750; }
+    .eyebrow::before { content: ""; width: 28px; height: 1px; background: currentColor; }
+    h1 { margin: 22px 0 24px; max-width: 800px; font: 600 clamp(58px, 8vw, 106px)/.92 Georgia, "Times New Roman", serif; letter-spacing: -.065em; }
+    h1 span { display: block; color: var(--green); font-style: italic; font-weight: 400; }
+    .lead { max-width: 690px; margin: 0; color: #becdc8; font-size: clamp(18px, 2vw, 22px); line-height: 1.55; letter-spacing: -.015em; }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 36px; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 11px 17px; border-radius: 10px; border: 1px solid var(--line); text-decoration: none; font-size: 14px; font-weight: 700; transition: transform .2s, background .2s, border .2s; }
+    .btn:hover { transform: translateY(-2px); border-color: rgba(128, 239, 193, .42); }
+    .btn.primary { background: var(--green); color: #062219; border-color: var(--green); }
+    .btn.secondary { background: rgba(255, 255, 255, .025); }
+    .hero-art { position: relative; min-height: 390px; display: grid; place-items: center; }
+    .hero-art::before { content: ""; position: absolute; width: 330px; height: 330px; border-radius: 50%; background: radial-gradient(circle, rgba(128, 239, 193, .19), transparent 68%); animation: breathe 5s ease-in-out infinite; }
+    .hero-art img { position: relative; width: min(330px, 100%); filter: drop-shadow(0 26px 35px rgba(0, 0, 0, .38)); animation: float 4.8s ease-in-out infinite; }
+    @keyframes float { 50% { transform: translateY(-14px) rotate(1deg); } }
+    @keyframes breathe { 50% { transform: scale(1.08); opacity: .75; } }
+
+    .stats { margin-top: -1px; border-block: 1px solid var(--line); background: rgba(9, 24, 20, .62); }
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); }
+    .stat { padding: 31px 28px; border-right: 1px solid var(--line); }
+    .stat:last-child { border: 0; }
+    .stat strong { display: block; color: var(--green); font: 600 32px/1.1 Georgia, serif; }
+    .stat span { color: var(--muted); font-size: 13px; }
+
+    section { padding: 112px 0; border-bottom: 1px solid var(--line); }
+    .section-head { display: grid; grid-template-columns: .72fr 1fr; gap: 60px; align-items: end; margin-bottom: 52px; }
+    h2 { margin: 15px 0 0; font: 500 clamp(38px, 5vw, 60px)/1.05 Georgia, serif; letter-spacing: -.045em; }
+    .section-copy { margin: 0; color: var(--muted); font-size: 17px; }
+    .figure { overflow: hidden; padding: 10px; border: 1px solid var(--line); border-radius: 20px; background: rgba(255, 255, 255, .025); box-shadow: 0 30px 80px rgba(0, 0, 0, .24); }
+    .figure img { width: 100%; border-radius: 13px; background: white; }
+    .caption { margin: 13px 8px 3px; color: var(--dim); font-size: 13px; text-align: center; }
+
+    .method-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 24px; }
+    .card { padding: 26px; border: 1px solid var(--line); border-radius: 17px; background: linear-gradient(145deg, rgba(255,255,255,.035), rgba(255,255,255,.012)); }
+    .card-num { color: var(--green); font: 600 12px/1 monospace; letter-spacing: .12em; }
+    .card h3 { margin: 23px 0 9px; font-size: 18px; letter-spacing: -.02em; }
+    .card p { margin: 0; color: var(--muted); font-size: 14px; }
+
+    .flow { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; counter-reset: flow; }
+    .flow-step { position: relative; min-height: 180px; padding: 23px 20px; border: 1px solid var(--line); border-radius: 15px; background: var(--panel); }
+    .flow-step::before { counter-increment: flow; content: "0" counter(flow); display: block; margin-bottom: 34px; color: var(--green); font: 700 11px/1 monospace; letter-spacing: .12em; }
+    .flow-step:not(:last-child)::after { content: "→"; position: absolute; z-index: 2; right: -21px; top: 50%; width: 27px; text-align: center; color: var(--green); }
+    .flow-step strong { display: block; margin-bottom: 7px; font-size: 15px; }
+    .flow-step span { display: block; color: var(--muted); font-size: 13px; line-height: 1.5; }
+
+    .train-layout { display: grid; grid-template-columns: .8fr 1.2fr; gap: 24px; }
+    .config { display: grid; gap: 1px; overflow: hidden; border: 1px solid var(--line); border-radius: 16px; background: var(--line); }
+    .config-row { display: flex; justify-content: space-between; gap: 20px; padding: 16px 19px; background: var(--panel); font-size: 14px; }
+    .config-row span { color: var(--muted); }
+    .config-row code { color: var(--green); }
+    .code { position: relative; overflow: hidden; border: 1px solid var(--line); border-radius: 16px; background: #050c0a; }
+    .code-bar { height: 44px; display: flex; align-items: center; padding: 0 14px; border-bottom: 1px solid var(--line); color: var(--dim); font: 12px/1 monospace; }
+    .dots { display: flex; gap: 6px; margin-right: 12px; }
+    .dots i { width: 7px; height: 7px; border-radius: 50%; background: #244239; }
+    pre { margin: 0; padding: 25px; overflow-x: auto; color: #d3e5df; font: 13px/1.75 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    pre .comment { color: #668078; }
+    pre .accent { color: var(--green); }
+    .copy { position: absolute; right: 11px; top: 9px; padding: 5px 9px; border: 1px solid var(--line); border-radius: 7px; color: var(--muted); background: #0b1714; cursor: pointer; font-size: 11px; }
+    .copy:hover { color: var(--ink); }
+
+    .dataset-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: stretch; }
+    .split-chart { display: grid; grid-template-columns: 443fr 199fr 88fr 70fr; min-height: 82px; overflow: hidden; border-radius: 13px; }
+    .split-chart span { min-width: 48px; display: flex; align-items: center; justify-content: center; writing-mode: vertical-rl; transform: rotate(180deg); padding: 11px 0; color: #06130f; font: 700 10px/1 monospace; }
+    .split-chart span:nth-child(1) { background: #80efc1; }
+    .split-chart span:nth-child(2) { background: #5bc79f; }
+    .split-chart span:nth-child(3) { background: #41a684; }
+    .split-chart span:nth-child(4) { background: #31806a; color: white; }
+    .legend { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 22px; }
+    .legend div { display: flex; justify-content: space-between; color: var(--muted); font-size: 13px; }
+    .legend strong { color: var(--ink); }
+    .note { margin-top: 18px; padding: 15px 17px; border-left: 2px solid var(--amber); color: #d7c39f; background: rgba(255, 201, 120, .055); font-size: 13px; }
+
+    .gallery { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+    .gallery .figure:first-child { grid-column: 1 / -1; }
+    .gallery h3 { margin: 13px 9px 0; font-size: 15px; }
+
+    footer { padding: 48px 0; color: var(--dim); }
+    .footer-inner { display: flex; justify-content: space-between; align-items: center; gap: 20px; font-size: 13px; }
+    .footer-links { display: flex; gap: 18px; }
+    .footer-links a:hover { color: var(--ink); }
+
+    .reveal { opacity: 0; transform: translateY(18px); transition: opacity .65s ease, transform .65s ease; }
+    .reveal.visible { opacity: 1; transform: none; }
+
+    @media (max-width: 900px) {
+      .links a:not(.repo-link) { display: none; }
+      .hero { min-height: auto; }
+      .hero-grid, .section-head, .train-layout, .dataset-grid { grid-template-columns: 1fr; }
+      .hero-art { min-height: 280px; }
+      .hero-art img { width: 240px; }
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+      .stat:nth-child(2) { border-right: 0; }
+      .stat:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
+      .method-grid { grid-template-columns: 1fr; }
+      .flow { grid-template-columns: 1fr 1fr; }
+      .flow-step:not(:last-child)::after { display: none; }
+      .gallery { grid-template-columns: 1fr; }
+      .gallery .figure:first-child { grid-column: auto; }
+    }
+    @media (max-width: 560px) {
+      .wrap { width: min(calc(100% - 28px), var(--max)); }
+      .hero { padding-top: 76px; }
+      h1 { font-size: 55px; }
+      section { padding: 82px 0; }
+      .stats-grid, .flow { grid-template-columns: 1fr; }
+      .stat { border-right: 0; border-bottom: 1px solid var(--line); }
+      .stat:nth-child(3) { border-bottom: 1px solid var(--line); }
+      .flow-step { min-height: auto; }
+      .flow-step::before { margin-bottom: 20px; }
+      .footer-inner { align-items: flex-start; flex-direction: column; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+      .reveal { opacity: 1; transform: none; }
     }
   </style>
 </head>
-
-<body class="antialiased">
-
-  <!-- ===================== NAVIGATION ===================== -->
-  <nav class="fixed top-0 left-0 right-0 z-50 h-16 flex items-center px-6"
-    style="background: rgba(255,255,255,0.85); backdrop-filter: blur(16px); border-bottom: 1px solid #e4e4e7; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-    <div class="max-w-7xl mx-auto w-full flex items-center justify-between">
-      <a href="#" class="flex items-center gap-2.5 text-zinc-900 font-semibold text-base tracking-tight">
-        <div class="w-7 h-7 rounded-md bg-emerald-500 flex items-center justify-center">
-          <i data-lucide="workflow" class="w-4 h-4 text-white"></i>
-        </div>
+<body id="top">
+  <nav class="nav" aria-label="Primary navigation">
+    <div class="wrap nav-inner">
+      <a class="brand" href="#top" aria-label="PCFlow home">
+        <span class="mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 16c3.2 0 3.4-8 6.7-8s3.3 8 6.6 8S19.7 8 23 8"/><path d="M3 20c3.2 0 3.4-4 6.7-4s3.3 4 6.6 4 3.4-4 6.7-4"/></svg>
+        </span>
         PCFlow
       </a>
-      <div class="hidden md:flex items-center gap-8 text-sm text-zinc-500">
-        <a href="#quickstart" class="hover:text-zinc-900 transition-colors">Quick Start</a>
-        <a href="#method" class="hover:text-zinc-900 transition-colors">Method</a>
-        <a href="#results" class="hover:text-zinc-900 transition-colors">Results</a>
-        <a href="#citation" class="hover:text-zinc-900 transition-colors">Citation</a>
-      </div>
-      <div class="flex items-center gap-3">
-        <a href="https://github.com/GeometryFu/PCFlow" target="_blank"
-          class="text-zinc-400 hover:text-zinc-900 transition-colors">
-          <i data-lucide="github" class="w-5 h-5"></i>
-        </a>
+      <div class="links">
+        <a href="#method">Method</a>
+        <a href="#training">Training</a>
+        <a href="#dataset">Dataset</a>
+        <a href="#quickstart">Quick start</a>
+        <a class="repo-link" href="https://github.com/GeometryFu/PCFlow">View source ↗</a>
       </div>
     </div>
   </nav>
 
-  <!-- ===================== HERO ===================== -->
-  <section class="relative min-h-screen flex items-center justify-center pt-16 overflow-hidden">
-    <!-- Background glow -->
-    <div class="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[600px] rounded-full glow-bg"
-      style="background: radial-gradient(ellipse, rgba(16,185,129,0.08) 0%, transparent 70%);"></div>
-    <div class="absolute bottom-0 left-0 right-0 h-48"
-      style="background: linear-gradient(to top, #fafafa 0%, transparent 100%);"></div>
-
-    <div class="relative z-10 max-w-5xl mx-auto px-6 text-center">
-      <!-- Mascot -->
-      <div class="mascot-float mb-8 flex justify-center">
-        <!-- 👇 替换为你的吉祥物图片 👇 -->
-        <img src="assets/images/mascot.png" alt="PCFlow Mascot"
-          class="w-36 h-36 md:w-44 md:h-44 object-contain drop-shadow-2xl"
-          onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
-        <div class="img-placeholder w-36 h-36 md:w-44 md:h-44 hidden">
-          <i data-lucide="image" class="w-8 h-8 mb-2"></i>
-          mascot.png
+  <header class="hero">
+    <div class="wrap hero-grid">
+      <div>
+        <div class="eyebrow">Ground-penetrating radar synthesis</div>
+        <h1>Physics guides <span>the flow.</span></h1>
+        <p class="lead">PCFlow turns gprMax scene descriptions into GPR B-scans with a 26-channel Maxwell condition encoder and rectified flow in the SDXL-VAE latent space.</p>
+        <div class="hero-actions">
+          <a class="btn primary" href="#quickstart">Start training</a>
+          <a class="btn secondary" href="https://github.com/GeometryFu/PCFlow/blob/main/README_CN.md">中文文档</a>
+          <a class="btn secondary" href="https://github.com/GeometryFu/PCFlow/tree/main/PCFlow">Browse code</a>
         </div>
       </div>
-
-      <!-- Title -->
-      <h1 class="font-serif-title text-5xl md:text-7xl lg:text-8xl tracking-tight text-zinc-900 mb-6">
-        PCFlow
-      </h1>
-
-      <!-- Tagline -->
-      <p class="text-lg md:text-xl text-zinc-600 font-light leading-relaxed max-w-2xl mx-auto mb-4">
-        Physics-Conditioned Flow Matching for GPR Pipeline Synthesis
-      </p>
-      <p class="text-sm text-zinc-500 max-w-xl mx-auto mb-10">
-        A novel framework for fast GPR B-scan synthesis, achieving high visual fidelity and strong physical consistency
-        via Maxwell-informed condition fields.
-      </p>
-
-      <!-- Badges -->
-      <div class="flex flex-wrap items-center justify-center gap-3 mb-12">
-        <!-- 👇 替换 arXiv 链接 👇 -->
-        <a href="https://arxiv.org/abs/XXXX.XXXXX" target="_blank" class="badge badge-arxiv">
-          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15v-4H7l5-8v4h4l-5 8z" />
-          </svg>
-          arXiv Paper
-        </a>
-        <!-- 👇 替换 HuggingFace 链接 👇 -->
-        <a href="https://huggingface.co/xxx/PCFlow" target="_blank" class="badge badge-hf">
-          <i data-lucide="box" class="w-4 h-4"></i>
-          HuggingFace
-        </a>
-        <a href="https://github.com/GeometryFu/PCFlow" target="_blank" class="badge badge-gh">
-          <i data-lucide="github" class="w-4 h-4"></i>
-          GitHub
-        </a>
-        <a href="#citation" class="badge badge-license">
-          <i data-lucide="scale" class="w-4 h-4"></i>
-          Apache 2.0
-        </a>
-      </div>
-
-      <!-- Scroll hint -->
-      <div class="animate-bounce text-zinc-400">
-        <i data-lucide="chevron-down" class="w-5 h-5 mx-auto"></i>
+      <div class="hero-art" aria-label="PCFlow mascot">
+        <img src="assets/images/mascot.png" alt="PCFlow radar mascot">
       </div>
     </div>
-  </section>
+  </header>
 
-  <!-- ===================== TEASER FIGURE ===================== -->
-  <section class="relative py-20 px-6">
-    <div class="max-w-6xl mx-auto fade-up">
-      <!-- 👇 替换为论文 teaser 图 👇 -->
-      <img src="assets/images/trains.png" alt="Teaser Figure"
-        class="w-full rounded-2xl border border-zinc-200 shadow-lg"
-        onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
-      <div class="img-placeholder w-full h-64 md:h-96 hidden rounded-2xl">
-        <i data-lucide="image" class="w-10 h-10 mb-3"></i>
-        <span>trains.png — GPR B-scan synthesis results comparison</span>
-      </div>
-      <p class="fig-caption">
-        Figure 1: Training evolution of PCFlow on fixed validation samples.
-        Weak target-response structures appear at 0.5K iterations, and the dominant hyperbolic response becomes clear by
-        1K iterations.
-        Around 2K--2.5K iterations, secondary reflection branches and multi-return structures are gradually formed.
-        Later iterations mainly improve waveform sharpness, background smoothness, and overall radargram fidelity.
-      </p>
+  <aside class="stats" aria-label="Project facts">
+    <div class="wrap stats-grid">
+      <div class="stat"><strong>26</strong><span>physics condition channels</span></div>
+      <div class="stat"><strong>800</strong><span>paired synthetic scenes</span></div>
+      <div class="stat"><strong>1024²</strong><span>B-scan resolution</span></div>
+      <div class="stat"><strong>50K</strong><span>steps in the main preset</span></div>
     </div>
-  </section>
+  </aside>
 
-  <!-- ===================== QUICK START ===================== -->
-  <section id="quickstart" class="relative py-24 px-6">
-    <div class="max-w-4xl mx-auto">
-      <div class="fade-up">
-        <span class="section-tag">Quick Start</span>
-        <h2 class="font-serif-title text-3xl md:text-5xl tracking-tight text-zinc-900 mt-4 mb-4">
-          Ready to Run
-        </h2>
-        <p class="text-zinc-600 text-base md:text-lg font-light leading-relaxed mb-12 max-w-2xl">
-          Clone the repo, install dependencies, and generate your first physically consistent GPR B-scan in minutes.
-        </p>
-      </div>
-
-      <!-- Step 1 -->
-      <div class="fade-up mb-8">
-        <div class="flex items-center gap-3 mb-4">
-          <div
-            class="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-sm font-semibold border border-emerald-100">
-            1</div>
-          <h3 class="text-zinc-900 font-medium text-base">Clone & Install Dependencies</h3>
+  <main>
+    <section id="method">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <div><div class="eyebrow">Method</div><h2>From scene physics to radar response.</h2></div>
+          <p class="section-copy">The source does not reduce the condition to a text label. It rasterizes material and geometry, derives propagation and response priors, and injects all five physical groups throughout the velocity network.</p>
         </div>
-        <div class="code-block p-5 relative">
-          <button class="copy-btn" onclick="copyCode(this)">
-            <i data-lucide="copy" class="w-3.5 h-3.5"></i> Copy
-          </button>
-          <pre class="text-zinc-800"><span class="comment"># Clone the repository</span>
-<span class="prompt">$</span> <span class="command">git clone https://github.com/GeometryFu/PCFlow.git</span>
-<span class="prompt">$</span> <span class="command">cd PCFlow</span>
-
-<span class="comment"># Create conda environment</span>
-<span class="prompt">$</span> <span class="command">conda create -n pcflow python=3.10 -y</span>
-<span class="prompt">$</span> <span class="command">conda activate pcflow</span>
-
-<span class="comment"># Install dependencies</span>
-<span class="prompt">$</span> <span class="command">pip install -r requirements.txt</span>
-<span class="prompt">$</span> <span class="command">pip install -e .</span></pre>
+        <div class="figure reveal">
+          <img src="assets/images/pipeline.png" alt="PCFlow architecture pipeline">
+          <p class="caption">PCFlow source pipeline: physical scene encoding, latent rectified-flow training and ODE decoding.</p>
+        </div>
+        <div class="method-grid reveal">
+          <article class="card"><span class="card-num">01 / CONDITION</span><h3>Maxwell-informed fields</h3><p>Coordinates, εr, σ, impedance, attenuation, phase, interfaces, pipe geometry, travel time and response priors form one interpretable 26-channel tensor.</p></article>
+          <article class="card"><span class="card-num">02 / NETWORK</span><h3>Physics-SPADE U-Net</h3><p>Geometry, material, reflection, propagation and detail groups modulate residual blocks across a four-level U-Net, with attention at its lower resolutions.</p></article>
+          <article class="card"><span class="card-num">03 / GENERATION</span><h3>Rectified-flow ODE</h3><p>The U-Net learns a latent velocity from noise to data. Euler or Heun integration then transports a random SDXL latent into a synthesized B-scan.</p></article>
         </div>
       </div>
+    </section>
 
-      <!-- Step 2 -->
-      <div class="fade-up mb-8">
-        <div class="flex items-center gap-3 mb-4">
-          <div
-            class="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-sm font-semibold border border-emerald-100">
-            2</div>
-          <h3 class="text-zinc-900 font-medium text-base">Download Pre-trained Weights</h3>
+    <section id="training">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <div><div class="eyebrow">Training loop</div><h2>A reproducible five-stage path.</h2></div>
+          <p class="section-copy">The main preset uses AdamW, automatic mixed precision, gradient clipping and EMA. Conditions are dropped for 10% of samples during training, while deeper latent rows receive greater loss weight.</p>
         </div>
-        <div class="code-block p-5 relative">
-          <button class="copy-btn" onclick="copyCode(this)">
-            <i data-lucide="copy" class="w-3.5 h-3.5"></i> Copy
-          </button>
-          <pre
-            class="text-zinc-800"><span class="comment"># Download weights from HuggingFace (Coming Soon)</span>
-<span class="prompt">$</span> <span class="command">mkdir -p checkpoints</span>
-<span class="prompt">$</span> <span class="command">wget https://huggingface.co/xxx/PCFlow/resolve/main/pcflow_base.pth -P checkpoints/</span></pre>
+        <div class="flow reveal" aria-label="Training flow">
+          <div class="flow-step"><strong>Load pair</strong><span>Read a grayscale PNG and its matching gprMax `.in` scene.</span></div>
+          <div class="flow-step"><strong>Build physics</strong><span>Rasterize εr, σ and geometry, then compute the 26-channel condition.</span></div>
+          <div class="flow-step"><strong>Encode latent</strong><span>Convert to pseudo-RGB and use the frozen SDXL VAE to obtain z₁.</span></div>
+          <div class="flow-step"><strong>Match velocity</strong><span>Sample z₀ and t, construct zₜ, then predict v = z₁ − z₀.</span></div>
+          <div class="flow-step"><strong>Track progress</strong><span>Update EMA; log, validate, sample and checkpoint on configured intervals.</span></div>
         </div>
-        <p class="text-zinc-400 text-xs mt-3 flex items-center gap-1.5">
-          <i data-lucide="info" class="w-3.5 h-3.5"></i>
-          Weights are coming soon. Please check the HuggingFace link later.
-        </p>
-      </div>
-
-      <!-- Step 3 -->
-      <div class="fade-up mb-8">
-        <div class="flex items-center gap-3 mb-4">
-          <div
-            class="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-sm font-semibold border border-emerald-100">
-            3</div>
-          <h3 class="text-zinc-900 font-medium text-base">Run Inference</h3>
-        </div>
-        <div class="code-block p-5 relative">
-          <button class="copy-btn" onclick="copyCode(this)">
-            <i data-lucide="copy" class="w-3.5 h-3.5"></i> Copy
-          </button>
-          <pre
-            class="text-zinc-800"><span class="comment"># Generate B-scan from physical condition parameters</span>
-<span class="prompt">$</span> <span class="command">python inference.py</span> <span class="flag">--config configs/pcflow_base.yaml</span> <span class="flag">--checkpoint checkpoints/pcflow_base.pth</span> <span class="flag">--condition examples/sample_params.yaml</span> <span class="flag">--output results/</span>
-
-<span class="comment"># Train your model</span>
-<span class="prompt">$</span> <span class="command">torchrun --nproc_per_node=4 train.py</span> <span class="flag">--config configs/pcflow_base.yaml</span></pre>
-        </div>
-      </div>
-
-      <!-- Expected output -->
-      <div class="fade-up glass-card p-6">
-        <div class="flex items-center gap-2 mb-3">
-          <i data-lucide="terminal" class="w-4 h-4 text-emerald-600"></i>
-          <span class="text-sm text-emerald-600 font-medium">Expected Output</span>
-        </div>
-        <div class="code-block p-4" style="border: none; background: #f4f4f5; box-shadow: none;">
-          <pre class="text-zinc-600 text-xs md:text-sm"><span style="color:#059669">✓</span> Loaded checkpoint from checkpoints/pcflow_base.pth
-<span style="color:#059669">✓</span> Model loaded successfully | Params: 85.2M
-<span style="color:#059669">✓</span> Constructing Maxwell-informed condition field...
-<span style="color:#059669">✓</span> Running flow matching sampling (50 steps, CFG scale 2.5)
-<span style="color:#059669">✓</span> Result saved to results/sample_output.png
-  └─ Geometry Metrics — Apex-x: 0.62, Curve: 1.01, Mask IoU: 0.91</pre>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ===================== METHOD ===================== -->
-  <section id="method" class="relative py-24 px-6">
-    <div class="max-w-6xl mx-auto">
-      <div class="fade-up">
-        <span class="section-tag">Method</span>
-        <h2 class="font-serif-title text-3xl md:text-5xl tracking-tight text-zinc-900 mt-4 mb-4">
-          Method Overview
-        </h2>
-        <p class="text-zinc-600 text-base md:text-lg font-light leading-relaxed mb-12 max-w-2xl">
-          PCFlow constructs a Maxwell-informed dense physical condition field from parameterized physical models. This
-          condition field guides conditional flow matching in the VAE latent space, reducing transport variance and
-          generating physically feasible GPR B-scans.
-        </p>
-      </div>
-
-      <!-- Pipeline figure -->
-      <div class="fade-up mb-16">
-        <!-- 👇 替换为方法框架图 👇 -->
-        <img src="assets/images/pipeline.png" alt="Method Pipeline"
-          class="w-full rounded-2xl border border-zinc-200 shadow-lg"
-          onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
-        <div class="img-placeholder w-full h-64 md:h-80 hidden rounded-2xl">
-          <i data-lucide="image" class="w-10 h-10 mb-3"></i>
-          <span>pipeline.png — Method Architecture</span>
-        </div>
-        <p class="fig-caption">
-          Figure 2: Overview of PCFlow. A Maxwell-informed condition encoder transforms simulation parameters into dense
-          physical fields, guiding the flow matching process in the VAE latent space.
-        </p>
-      </div>
-
-      <!-- Key features grid -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 fade-up">
-        <div class="glass-card p-8">
-          <div
-            class="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center mb-5 border border-emerald-100">
-            <i data-lucide="atom" class="w-5 h-5 text-emerald-600"></i>
+        <div class="train-layout reveal" style="margin-top:24px">
+          <div class="config" aria-label="Main training preset">
+            <div class="config-row"><span>Optimizer</span><code>AdamW</code></div>
+            <div class="config-row"><span>Learning rate</span><code>5e-5</code></div>
+            <div class="config-row"><span>Batch / steps</span><code>8 / 50,000</code></div>
+            <div class="config-row"><span>Condition dropout</span><code>0.10</code></div>
+            <div class="config-row"><span>EMA decay</span><code>0.999</code></div>
+            <div class="config-row"><span>Validation solver</span><code>Heun · 50 steps</code></div>
           </div>
-          <h3 class="text-zinc-900 font-medium text-base mb-2">Maxwell-Informed Conditioning</h3>
-          <p class="text-zinc-500 text-sm leading-relaxed">
-            Encodes material properties, target geometry, propagation cues, and response-domain priors into an
-            interpretable dense condition field.
-          </p>
-        </div>
-        <div class="glass-card p-8">
-          <div
-            class="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center mb-5 border border-emerald-100">
-            <i data-lucide="scan-line" class="w-5 h-5 text-emerald-600"></i>
+          <div class="code">
+            <div class="code-bar"><span class="dots"><i></i><i></i><i></i></span>terminal</div>
+            <button class="copy" type="button" aria-label="Copy training commands">Copy</button>
+            <pre><span class="comment"># Run inside the executable source directory</span>
+cd PCFlow/PCFlow
+
+<span class="comment"># Main preset</span>
+python train.py
+
+<span class="comment"># Alternate training preset</span>
+python train.py \
+  <span class="accent">--model-config</span> configs/model_gpr.yaml \
+  <span class="accent">--train-config</span> configs/train_gpr_dataset_split.yaml</pre>
           </div>
-          <h3 class="text-zinc-900 font-medium text-base mb-2">Physical Consistency</h3>
-          <p class="text-zinc-500 text-sm leading-relaxed">
-            Ensures the generated hyperbolic responses appear at correct lateral positions, depths, and aperture shapes
-            determined by the physical scene.
-          </p>
         </div>
-        <div class="glass-card p-8">
-          <div
-            class="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center mb-5 border border-emerald-100">
-            <i data-lucide="zap" class="w-5 h-5 text-emerald-600"></i>
+      </div>
+    </section>
+
+    <section id="dataset">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <div><div class="eyebrow">Bundled benchmark</div><h2>Every image stays paired with its scene.</h2></div>
+          <p class="section-copy">The repository includes 800 scenes across steel, water-filled PVC and air-filled PVC targets. JSONL indexes connect each B-scan to the `.in` file consumed by the loader.</p>
+        </div>
+        <div class="dataset-grid reveal">
+          <div class="card">
+            <span class="card-num">DATA SPLITS / 800 TOTAL</span>
+            <div class="split-chart" style="margin-top:24px" aria-label="Dataset split chart"><span>TRAIN</span><span>STRESS</span><span>VAL</span><span>TEST</span></div>
+            <div class="legend">
+              <div><span>Train</span><strong>443</strong></div><div><span>Stress test</span><strong>199</strong></div>
+              <div><span>Validation</span><strong>88</strong></div><div><span>Test ID</span><strong>70</strong></div>
+            </div>
           </div>
-          <h3 class="text-zinc-900 font-medium text-base mb-2">Fast & Controllable</h3>
-          <p class="text-zinc-500 text-sm leading-relaxed">
-            Formulates synthesis as conditional flow matching with Classifier-Free Guidance, achieving fast and
-            deterministic physically aligned generation.
-          </p>
+          <div class="code">
+            <div class="code-bar"><span class="dots"><i></i><i></i><i></i></span>build a custom index</div>
+            <button class="copy" type="button" aria-label="Copy indexing command">Copy</button>
+            <pre>python data/gpr_dataset/build_index.py \
+  <span class="accent">--images_dir</span> path/to/images \
+  <span class="accent">--ins_dir</span> path/to/conditions \
+  <span class="accent">--out_jsonl</span> path/to/train.jsonl</pre>
+            <div class="note">Image and `.in` filenames must share the same stem. Update the JSONL paths in the selected training YAML afterward.</div>
+          </div>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- ===================== RESULTS ===================== -->
-  <section id="results" class="relative py-24 px-6">
-    <div class="max-w-6xl mx-auto">
-      <div class="fade-up">
-        <span class="section-tag">Results</span>
-        <h2 class="font-serif-title text-3xl md:text-5xl tracking-tight text-zinc-900 mt-4 mb-4">
-          Accurate Geometry & High Fidelity
-        </h2>
-        <p class="text-zinc-600 text-base md:text-lg font-light leading-relaxed mb-12 max-w-2xl">
-          PCFlow significantly outperforms existing GAN-based, diffusion, and text-guided baselines in response geometry
-          consistency while maintaining strong image quality.
-        </p>
-      </div>
-
-      <!-- Results figure -->
-      <div class="fade-up mb-12">
-        <!-- 👇 替换为结果对比图 👇 -->
-        <img src="assets/images/id-ood.png" alt="Results" class="w-full rounded-2xl border border-zinc-200 shadow-lg"
-          onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
-        <div class="img-placeholder w-full h-64 md:h-80 hidden rounded-2xl">
-          <i data-lucide="image" class="w-10 h-10 mb-3"></i>
-          <span>id-ood.png — Qualitative comparison</span>
+    <section id="quickstart">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <div><div class="eyebrow">Quick start</div><h2>Clone, install, train.</h2></div>
+          <p class="section-copy">Use Python 3.10 and install the CUDA-enabled PyTorch build suited to your system. The first run downloads the frozen `stabilityai/sdxl-vae` unless a local path is configured.</p>
         </div>
-        <p class="fig-caption">
-          Figure 3: Qualitative comparison on OOD test samples. PCFlow generates more physically consistent hyperbolic
-          responses than general generative baselines.
-        </p>
-      </div>
+        <div class="code reveal">
+          <div class="code-bar"><span class="dots"><i></i><i></i><i></i></span>setup</div>
+          <button class="copy" type="button" aria-label="Copy setup commands">Copy</button>
+          <pre>git clone https://github.com/GeometryFu/PCFlow.git
+cd PCFlow/PCFlow
 
-      <!-- Results table -->
-      <div class="fade-up glass-card overflow-hidden">
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead>
-              <tr class="border-b border-zinc-100 bg-zinc-50/50">
-                <th class="text-left py-4 px-6 text-zinc-500 font-medium">Method</th>
-                <th class="text-center py-4 px-6 text-zinc-500 font-medium">Curve ↓</th>
-                <th class="text-center py-4 px-6 text-zinc-500 font-medium">Mask IoU ↑</th>
-                <th class="text-center py-4 px-6 text-zinc-500 font-medium">PSNR ↑</th>
-                <th class="text-center py-4 px-6 text-zinc-500 font-medium">LPIPS ↓</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr class="border-b border-zinc-100">
-                <td class="py-4 px-6 text-zinc-800">Pix2Pix</td>
-                <td class="py-4 px-6 text-center text-zinc-500">52.94</td>
-                <td class="py-4 px-6 text-center text-zinc-500">0.00</td>
-                <td class="py-4 px-6 text-center text-zinc-500">19.81</td>
-                <td class="py-4 px-6 text-center text-zinc-500">0.4560</td>
-              </tr>
-              <tr class="border-b border-zinc-100">
-                <td class="py-4 px-6 text-zinc-800">ControlNet</td>
-                <td class="py-4 px-6 text-center text-zinc-500">111.75</td>
-                <td class="py-4 px-6 text-center text-zinc-500">0.00</td>
-                <td class="py-4 px-6 text-center text-zinc-500">18.28</td>
-                <td class="py-4 px-6 text-center text-zinc-500">0.4800</td>
-              </tr>
-              <tr class="border-b border-zinc-100">
-                <td class="py-4 px-6 text-zinc-800">SD2.1 LoRA-U+TE</td>
-                <td class="py-4 px-6 text-center text-zinc-500">117.64</td>
-                <td class="py-4 px-6 text-center text-zinc-500">0.02</td>
-                <td class="py-4 px-6 text-center text-zinc-500">18.88</td>
-                <td class="py-4 px-6 text-center text-zinc-500">0.3128</td>
-              </tr>
-              <tr class="border-b border-zinc-100 bg-emerald-50/50">
-                <td class="py-4 px-6 text-emerald-700 font-medium">
-                  PCFlow (GR)
-                  <span
-                    class="ml-2 text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full border border-emerald-200">Ours</span>
-                </td>
-                <td class="py-4 px-6 text-center text-emerald-600 font-medium">3.57</td>
-                <td class="py-4 px-6 text-center text-emerald-600 font-medium">0.73</td>
-                <td class="py-4 px-6 text-center text-emerald-600 font-medium">19.89</td>
-                <td class="py-4 px-6 text-center text-emerald-600 font-medium">0.1939</td>
-              </tr>
-            </tbody>
-          </table>
+conda create -n pcflow python=3.10 -y
+conda activate pcflow
+
+<span class="comment"># Install a suitable CUDA-enabled PyTorch build first</span>
+pip install -r requirements.txt
+python train.py</pre>
         </div>
-        <div class="px-6 py-3 border-t border-zinc-100">
-          <p class="text-zinc-400 text-xs">Table 1: Comparison on high-conductivity OOD test set. Geometry metrics
-            (Curve, IoU) and Image Fidelity metrics (PSNR, LPIPS) are reported.</p>
+        <div class="note reveal">The repository does not currently publish a PCFlow checkpoint or official paper identifier. This page intentionally omits placeholder download, benchmark and citation claims. See the README for current sampling behavior and implementation notes.</div>
+      </div>
+    </section>
+
+    <section id="gallery">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <div><div class="eyebrow">Repository visuals</div><h2>Inspect learning and generalization.</h2></div>
+          <p class="section-copy">These figures are versioned with the project. They provide a direct visual companion to the pipeline and fixed-sample monitoring implemented by the training code.</p>
+        </div>
+        <div class="gallery reveal">
+          <div class="figure"><img src="assets/images/trains.png" alt="PCFlow fixed validation samples across training steps"><h3>Training evolution</h3><p class="caption">Fixed validation cases make changes across checkpoints directly comparable.</p></div>
+          <div class="figure"><img src="assets/images/id-ood.png" alt="In-distribution and out-of-distribution GPR examples"><h3>ID / stress-test examples</h3><p class="caption">Qualitative examples across the repository's evaluation splits.</p></div>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
+  </main>
 
-  <!-- ===================== CITATION ===================== -->
-  <section id="citation" class="relative py-24 px-6">
-    <div class="max-w-4xl mx-auto">
-      <div class="fade-up">
-        <span class="section-tag">Citation</span>
-        <h2 class="font-serif-title text-3xl md:text-5xl tracking-tight text-zinc-900 mt-4 mb-4">
-          Cite Our Work
-        </h2>
-        <p class="text-zinc-600 text-base md:text-lg font-light leading-relaxed mb-10 max-w-2xl">
-          If you find PCFlow useful in your research, please consider citing:
-        </p>
-      </div>
-
-      <div class="fade-up code-block p-6 relative">
-        <button class="copy-btn" onclick="copyCode(this)">
-          <i data-lucide="copy" class="w-3.5 h-3.5"></i> Copy
-        </button>
-        <pre class="text-zinc-800 text-xs md:text-sm">@article{pcflow2026,
-  title={PCFlow: Physics-Conditioned Flow Matching for GPR Pipeline Synthesis},
-  author={Author Name and Collaborator Name},
-  journal={arXiv preprint arXiv:XXXX.XXXXX},
-  year={2026}
-}</pre>
-      </div>
-    </div>
-  </section>
-
-  <!-- ===================== FOOTER ===================== -->
-  <footer class="border-t border-zinc-200 py-12 px-6 bg-white">
-    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-      <div class="flex items-center gap-2.5 text-zinc-400 text-sm">
-        <div class="w-6 h-6 rounded-md bg-emerald-50 flex items-center justify-center border border-emerald-100">
-          <i data-lucide="workflow" class="w-3 h-3 text-emerald-600"></i>
-        </div>
-        PCFlow © 2026
-      </div>
-      <div class="flex items-center gap-6">
-        <a href="https://github.com/GeometryFu/PCFlow" target="_blank"
-          class="text-zinc-400 hover:text-zinc-900 transition-colors text-sm flex items-center gap-1.5">
-          <i data-lucide="github" class="w-4 h-4"></i> GitHub
-        </a>
-        <a href="https://arxiv.org/abs/XXXX.XXXXX" target="_blank"
-          class="text-zinc-400 hover:text-zinc-900 transition-colors text-sm flex items-center gap-1.5">
-          <i data-lucide="file-text" class="w-4 h-4"></i> Paper
-        </a>
-        <a href="https://huggingface.co/xxx/PCFlow" target="_blank"
-          class="text-zinc-400 hover:text-zinc-900 transition-colors text-sm flex items-center gap-1.5">
-          <i data-lucide="box" class="w-4 h-4"></i> Weights
-        </a>
-      </div>
+  <footer>
+    <div class="wrap footer-inner">
+      <div>PCFlow · Source-backed project documentation</div>
+      <div class="footer-links"><a href="https://github.com/GeometryFu/PCFlow">GitHub</a><a href="https://github.com/GeometryFu/PCFlow/blob/main/README.md">README</a><a href="https://github.com/GeometryFu/PCFlow/blob/main/README_CN.md">中文</a></div>
     </div>
   </footer>
 
-  <!-- Toast notification -->
-  <div id="toast" class="toast">
-    <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i>
-    <span id="toast-text">Copied!</span>
-  </div>
-
-  <!-- ===================== SCRIPTS ===================== -->
   <script>
-    // Initialize Lucide icons
-    lucide.createIcons();
-
-    // Copy code functionality
-    function copyCode(btn) {
-      const pre = btn.closest('.code-block').querySelector('pre');
-      const text = pre.textContent;
-      navigator.clipboard.writeText(text).then(() => {
-        btn.classList.add('copied');
-        btn.innerHTML = '<i data-lucide="check" class="w-3.5 h-3.5"></i> Copied!';
-        lucide.createIcons();
-        showToast('Code copied to clipboard!');
-        setTimeout(() => {
-          btn.classList.remove('copied');
-          btn.innerHTML = '<i data-lucide="copy" class="w-3.5 h-3.5"></i> Copy';
-          lucide.createIcons();
-        }, 2000);
-      });
-    }
-
-    // Toast notification
-    function showToast(message) {
-      const toast = document.getElementById('toast');
-      document.getElementById('toast-text').textContent = message;
-      toast.classList.add('show');
-      setTimeout(() => toast.classList.remove('show'), 2500);
-    }
-
-    // Scroll fade-in animation
     const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
+      entries.forEach((entry) => {
         if (entry.isIntersecting) {
           entry.target.classList.add('visible');
+          observer.unobserve(entry.target);
         }
       });
-    }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+    }, { threshold: 0.08 });
 
-    document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
+    document.querySelectorAll('.reveal').forEach((el) => observer.observe(el));
 
-    // Smooth scroll for nav links
-    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-      anchor.addEventListener('click', function (e) {
-        e.preventDefault();
-        const target = document.querySelector(this.getAttribute('href'));
-        if (target) {
-          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.querySelectorAll('.copy').forEach((button) => {
+      button.addEventListener('click', async () => {
+        const text = button.parentElement.querySelector('pre').innerText;
+        try {
+          await navigator.clipboard.writeText(text);
+          const previous = button.textContent;
+          button.textContent = 'Copied';
+          setTimeout(() => { button.textContent = previous; }, 1500);
+        } catch (_) {
+          button.textContent = 'Select & copy';
         }
       });
     });
   </script>
 </body>
-
 </html>

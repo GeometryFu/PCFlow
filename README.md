@@ -1,179 +1,201 @@
-
 <div align="center">
 
 # PCFlow
 
-## Physics-Conditioned Flow Matching for GPR Pipeline Synthesis
+### Physics-Conditioned Rectified Flow for Ground-Penetrating Radar Imaging
 
-[![arXiv](https://img.shields.io/badge/arXiv-2501.xxxxx-b31b1b.svg?logo=arXiv)](https://arxiv.org/abs/2501.xxxxx)
-[![HuggingFace](https://img.shields.io/badge/🤗_Weights-Coming_Soon-yellow.svg)](https://huggingface.co/xxx/PCFlow)
-[![License](https://img.shields.io/badge/License-Apache_2.0-green.svg)](LICENSE)
-[![Language](https://img.shields.io/badge/Lang-English-blue.svg)](README.md) [![Language](https://img.shields.io/badge/Lang-中文-red.svg)](README_CN.md)
+[Project page](https://geometryfu.github.io/PCFlow/) · [中文说明](README_CN.md) · [Source](PCFlow/) · [Dataset summary](PCFlow/dataset_split/summary.json)
 
-🔥 **PCFlow** is a framework for fast Ground-Penetrating Radar (GPR) B-scan synthesis, based on Maxwell-informed condition field-guided flow matching, achieving a unity of high visual fidelity and strong physical consistency.
-
-<p float="center">
-  <img src="assets/pipeline.png" width="90%" />
-</p>
+<img src="assets/pipeline.png" width="92%" alt="PCFlow pipeline" />
 
 </div>
 
-## 📋 Table of Contents
+PCFlow synthesizes 1024 × 1024 ground-penetrating radar (GPR) B-scans from gprMax-style physical scene descriptions. It combines an analytic, Maxwell-informed 26-channel condition encoder with a conditional rectified-flow U-Net operating in the latent space of a frozen SDXL VAE.
 
-- [🚀 Quick Start](#-quick-start)
-- [📦 Installation](#-installation)
-- [🧠 Inference](#-inference)
-- [🏋️ Training](#️-training)
-- [📖 Paper](#-paper)
+> The executable project is in [`PCFlow/`](PCFlow/). Run all commands below from that directory.
 
-## 🚀 Quick Start
+## What is implemented
 
-1️⃣ Clone the repository
+- **Physics-conditioned representation:** relative permittivity, conductivity, impedance, attenuation, phase, target geometry, travel-time curves, hyperbola response and target-strength priors are assembled into a 26-channel tensor.
+- **Latent rectified flow:** grayscale radargrams are converted to pseudo-RGB, encoded to `4 × 128 × 128` SDXL-VAE latents, and learned as a straight velocity field from Gaussian noise to the data latent.
+- **Physics-aware U-Net:** the condition is injected at multiple resolutions through grouped Physics-SPADE blocks; attention is applied at the 32 × 32 and 16 × 16 resolutions.
+- **Training utilities:** mixed precision, gradient clipping, exponential moving average (EMA), classifier-free condition dropout, fixed validation samples, CSV logging, loss curves and periodic checkpoints.
+- **Bundled benchmark:** 800 paired gprMax scene files and B-scan images, including train, validation, in-distribution test and stress-test splits plus few-shot subsets.
+
+## Method at a glance
+
+```mermaid
+flowchart LR
+    A[gprMax .in scene] --> B[Scene parser]
+    B --> C[epsilon / sigma maps<br/>and target geometry]
+    C --> D[Maxwell condition encoder<br/>26 channels]
+    E[GPR B-scan] --> F[Pseudo-RGB]
+    F --> G[Frozen SDXL VAE encoder]
+    G --> H[Data latent z1]
+    I[Gaussian noise z0] --> J[Linear interpolation zt]
+    H --> J
+    D --> K[Conditional U-Net velocity field]
+    J --> K
+    K --> L[Euler / Heun ODE sampling]
+    L --> M[Frozen SDXL VAE decoder]
+    M --> N[Synthesized B-scan]
+```
+
+For training, the model samples `t ~ U(0, 1)`, constructs `z_t = (1-t) z_0 + t z_1`, and predicts the constant target velocity `v = z_1 - z_0`. The loss is MSE with a linear depth weight from 1.0 to 3.0 so deeper, weaker responses receive more emphasis.
+
+## Repository layout
+
+```text
+PCFlow/                         # executable source root
+├── configs/
+│   ├── model_gpr.yaml          # VAE, U-Net and 26-channel encoder
+│   ├── train_gpr.yaml          # main training preset
+│   └── train_gpr_dataset_split.yaml
+├── data/gpr_dataset/           # dataset, index builder and .in parser
+├── dataset_split/              # bundled paired benchmark and split metadata
+├── models/                     # condition encoder, U-Net, VAE and pseudo-RGB
+├── utils/                      # solvers, EMA, logging, plotting and I/O
+├── train.py                    # training entry point
+├── sample.py                   # checkpoint sampling entry point
+└── requirements.txt
+docs/index.html                 # GitHub Pages project site
+assets/                         # README figures
+```
+
+## Installation
+
+Python 3.10 and a CUDA-capable PyTorch installation are recommended. Choose the PyTorch build appropriate for your CUDA version from the [official PyTorch installer](https://pytorch.org/get-started/locally/), then install the remaining dependencies.
+
 ```bash
 git clone https://github.com/GeometryFu/PCFlow.git
-cd PCFlow
-```
+cd PCFlow/PCFlow
 
-2️⃣ Create environment & Install dependencies
-```bash
 conda create -n pcflow python=3.10 -y
 conda activate pcflow
+
+# Install the CUDA-enabled PyTorch build suitable for your system first.
 pip install -r requirements.txt
 ```
 
-3️⃣ Download pretrained weights (HuggingFace)
-```bash
-mkdir -p checkpoints
-# wget -P checkpoints https://huggingface.co/xxx/PCFlow/resolve/main/pcflow_base.pth
+The frozen VAE is loaded from `stabilityai/sdxl-vae` by default. For offline use, download it in advance and change `vae.pretrained_path` in [`configs/model_gpr.yaml`](PCFlow/configs/model_gpr.yaml) to the local directory.
+
+## Dataset
+
+The bundled dataset contains 800 paired samples:
+
+| Split | Samples | Purpose |
+|---|---:|---|
+| `train` | 443 | Main training set and source for few-shot subsets |
+| `val` | 88 | Velocity-loss validation and fixed visual samples |
+| `test_id` | 70 | In-distribution evaluation |
+| `stress_test` | 199 | High-conductivity stress testing |
+
+Target classes are `steel_free_space` (403), `pvc_water` (204), and `pvc_free_space` (193). See [`summary.json`](PCFlow/dataset_split/summary.json) for the complete statistics.
+
+Each JSONL record pairs a radargram with a gprMax scene:
+
+```json
+{
+  "id": "pvc_free_space_r0.03_eps10_sig0.005_x1.27_y0.4",
+  "image_path": "dataset_split/images/train/pvc_free_space_r0.03_eps10_sig0.005_x1.27_y0.4.png",
+  "in_path": "dataset_split/conditions/train/pvc_free_space_r0.03_eps10_sig0.005_x1.27_y0.4.in"
+}
 ```
 
-4️⃣ Run inference 🎉
-```bash
-python inference.py \
-    --config configs/pcflow_base.yaml \
-    --checkpoint checkpoints/pcflow_base.pth \
-    --condition examples/sample_params.yaml \
-    --output results/
-```
-
-📷 Expected Output
-
-```
-✅ Loading checkpoint from checkpoints/pcflow_base.pth
-✅ Model loaded successfully | Params: 85.2M
-✅ Constructing Maxwell-informed condition field...
-✅ Running flow matching sampling (50 steps)
-✅ Result saved to results/sample_output.png
-⏱  Inference time: 0.42s (single GPU)
-```
-
-## 📦 Installation
-
-### Requirements
-
-- Python >= 3.10
-- PyTorch >= 2.1
-- CUDA >= 11.8 (Recommended)
-
-### Install
+To index a similarly structured custom dataset:
 
 ```bash
-# Option 1: pip
-pip install -r requirements.txt
-
-# Option 2: Editable install (recommended for development)
-pip install -e .
+python data/gpr_dataset/build_index.py \
+  --images_dir path/to/images \
+  --ins_dir path/to/conditions \
+  --out_jsonl path/to/train.jsonl
 ```
 
-### Verify Installation
+Then update the paths under `data` in a training YAML file. Image and `.in` filenames must share the same stem.
+
+## Training
+
+### 1. Select configuration
+
+- [`configs/model_gpr.yaml`](PCFlow/configs/model_gpr.yaml) defines the SDXL VAE, U-Net and physical encoder.
+- [`configs/train_gpr.yaml`](PCFlow/configs/train_gpr.yaml) is the main 50,000-step preset: batch size 8, AdamW at `5e-5`, AMP, EMA `0.999`, 10% condition dropout and 50-step Heun validation sampling.
+- [`configs/train_gpr_dataset_split.yaml`](PCFlow/configs/train_gpr_dataset_split.yaml) is an alternate preset with learning rate `1e-4`, 30-step Heun sampling and a separate output directory.
+
+Adjust `batch_size` and `num_workers` for your machine before starting.
+
+### 2. Start training
 
 ```bash
-python -c "import pcflow; print(pcflow.__version__)"
-# Output: 0.1.0
+# Main preset
+python train.py
+
+# Explicit configuration files
+python train.py \
+  --model-config configs/model_gpr.yaml \
+  --train-config configs/train_gpr_dataset_split.yaml
 ```
 
-## 🧠 Inference
+The current entry point is single-process and uses the device declared in the training YAML (`cuda` by default).
+
+### 3. Monitor artifacts
+
+Artifacts are written under `output.workdir`:
+
+```text
+outputs/gpr_cfm/
+├── checkpoints/     # ckpt_XXXXXXX.pt
+├── samples_fixed/   # repeated validation cases for visual comparison
+├── metrics/         # train_log.csv and fixed_val_indices.json
+└── curves/          # loss_curve.png
+```
+
+Logging occurs every 50 steps, fixed samples every 500 steps, and validation/checkpointing every 1,000 steps in the main preset.
+
+### 4. Resume
+
+Edit the `resume` block in the selected training YAML:
+
+```yaml
+train:
+  resume:
+    enabled: true
+    checkpoint_path: "ckpt_0010000.pt"  # null selects the newest checkpoint
+```
+
+The current implementation restores the U-Net, EMA weights and step counter. Optimizer and AMP-scaler states are stored in checkpoints but are not restored by `setup_resume_training`.
+
+## Sampling
+
+Use an EMA checkpoint with either an explicit pair or a JSONL file:
 
 ```bash
-# Generate a single B-scan from physical condition parameters
-python inference.py \
-    --config configs/pcflow_base.yaml \
-    --checkpoint checkpoints/pcflow_base.pth \
-    --condition path/to/your/params.yaml \
-    --output results/
+# Explicit paired files
+python sample.py \
+  --ckpt outputs/gpr_cfm/checkpoints/ckpt_0050000.pt \
+  --image dataset_split/images/test_id/steel_free_space_r0.08_eps10_sig0.005_x2.29_y0.65.png \
+  --infile dataset_split/conditions/test_id/steel_free_space_r0.08_eps10_sig0.005_x2.29_y0.65.in \
+  --out outputs/sample.png
 
-# Batch generation (provide a folder of conditions)
-python inference.py \
-    --config configs/pcflow_base.yaml \
-    --checkpoint checkpoints/pcflow_base.pth \
-    --condition_dir path/to/params_folder \
-    --output results/
+# The current sampler reads the first record in the JSONL file
+python sample.py \
+  --ckpt outputs/gpr_cfm/checkpoints/ckpt_0050000.pt \
+  --jsonl dataset_split/jsonl/test_id.jsonl \
+  --out outputs/sample.png
 ```
 
-### Full Argument List
+The standalone sampler uses the solver name and step count in the selected training configuration. Its current CLI expects a paired image path together with the `.in` path (or obtains both from JSONL).
 
-| Argument          | Type  | Default                    | Description                              |
-| ----------------- | ----- | -------------------------- | ---------------------------------------- |
-| `--config`        | str   | `configs/pcflow_base.yaml` | Path to config file                      |
-| `--checkpoint`    | str   | Required                   | Path to model checkpoint                 |
-| `--condition`     | str   | None                       | Path to a single physical condition file |
-| `--condition_dir` | str   | None                       | Path to a folder of physical conditions  |
-| `--output`        | str   | `results/`                 | Output directory                         |
-| `--device`        | str   | `cuda`                     | Device for inference                     |
-| `--seed`          | int   | `42`                       | Random seed                              |
-| `--num_samples`   | int   | `1`                        | Number of samples per condition          |
-| `--cfg_scale`     | float | `2.5`                      | Classifier-Free Guidance scale           |
+## Implementation notes
 
-## 🏋️ Training
+- The source currently targets one cylindrical buried object per scene, matching the bundled dataset convention.
+- Model training uses an edge-preserving condition downsampler; the standalone sampler currently uses average pooling for its condition tensor.
+- Physics Flow Alignment (PFA) modules are defined for checkpoint compatibility but disabled in `ResBlock.forward`; active conditioning is provided by concatenation and Physics-SPADE.
+- No pretrained PCFlow checkpoint or paper identifier is published in this repository at present, so this README does not advertise placeholder links.
 
-```bash
-# Single GPU
-python train.py --config configs/pcflow_base.yaml
+## License
 
-# Multi-GPU (Recommended)
-torchrun --nproc_per_node=4 train.py --config configs/pcflow_base.yaml
+The repository currently contains two different license notices: the root [`LICENSE`](LICENSE) is Apache-2.0, while [`PCFlow/LICENSE`](PCFlow/LICENSE) states CC-BY-NC-4.0 for the source and bundled dataset. Please confirm the intended terms with the project authors before reuse.
 
-# Resume training
-python train.py --config configs/pcflow_base.yaml --resume checkpoints/pcflow_latest.pth
-```
+## Citation
 
-### Dataset Preparation
-
-Please organize your gprMax simulation dataset as follows (including condition parameters and corresponding B-scans):
-
-```
-data/
-└── gprmax_pipeline/
-    ├── train/
-    │   ├── conditions/
-    │   │   ├── 00001.yaml
-    │   │   └── ...
-    │   └── bscans/
-    │       ├── 00001.png
-    │       └── ...
-    ├── val/
-    │   └── ...
-    └── metadata.csv
-```
-
-Modify the `data.root` field in `configs/pcflow_base.yaml` to point to your data path.
-
-## 📖 Paper
-
-### PCFlow: Physics-Conditioned Flow Matching for GPR Pipeline Synthesis
-
-📄 **Paper**: [arXiv Link (Coming Soon)](https://arxiv.org/abs/2501.xxxxx)
-
-🏠 **Project Page**: [https://GeometryFu.github.io/PCFlow](https://GeometryFu.github.io/PCFlow)
-
-🤗 **Model Weights**: [HuggingFace (Coming Soon)](https://huggingface.co/xxx/PCFlow)
-
-<div align="center">
-
-<img src="assets/mascot.png" width="120" alt="PCFlow Mascot"/>
-
-**PCFlow** is released under the [Apache 2.0 License](LICENSE).
-
-Made with ❤️ by the PCFlow Team
-
-</div>
+No publication metadata is included in the repository yet. If you use the code, cite the repository URL and commit hash until an official citation is provided.
