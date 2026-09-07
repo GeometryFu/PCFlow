@@ -4,8 +4,6 @@
 
 ## Physics-Conditioned Flow Matching for GPR Pipeline Synthesis
 
-[![Paper](https://img.shields.io/badge/Paper-Coming_Soon-b31b1b.svg)](#-paper)
-[![Weights](https://img.shields.io/badge/🤗_Weights-Coming_Soon-yellow.svg)](#-paper)
 [![License](https://img.shields.io/badge/License-Apache_2.0-green.svg)](LICENSE)
 [![Language](https://img.shields.io/badge/Lang-English-blue.svg)](README.md) [![Language](https://img.shields.io/badge/Lang-中文-red.svg)](README_CN.md)
 
@@ -23,7 +21,6 @@
 - [📦 Installation](#-installation)
 - [🧠 Inference](#-inference)
 - [🏋️ Training](#️-training)
-- [📖 Paper](#-paper)
 
 ## 🚀 Quick Start
 
@@ -196,15 +193,7 @@ python data/gpr_dataset/build_index.py \
 
 Update `data.train_jsonl`, `data.val_jsonl` and the other split paths in the selected training YAML. Training outputs are written under `output.workdir`, including checkpoints, fixed samples, CSV logs and loss curves.
 
-## 📖 Paper
-
-### PCFlow: Physics-Conditioned Flow Matching for GPR Pipeline Synthesis
-
-📄 **Paper**: Coming soon
-
 🏠 **Project Page**: [https://GeometryFu.github.io/PCFlow](https://GeometryFu.github.io/PCFlow)
-
-🤗 **Model Weights**: Coming soon
 
 <div align="center">
 

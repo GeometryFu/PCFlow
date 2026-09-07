@@ -4,8 +4,6 @@
 
 ## Physics-Conditioned Flow Matching for GPR Pipeline Synthesis
 
-[![Paper](https://img.shields.io/badge/Paper-Coming_Soon-b31b1b.svg)](#-论文)
-[![Weights](https://img.shields.io/badge/🤗_Weights-Coming_Soon-yellow.svg)](#-论文)
 [![License](https://img.shields.io/badge/License-Apache_2.0-green.svg)](LICENSE)
 [![Language](https://img.shields.io/badge/Lang-English-blue.svg)](README.md) [![Language](https://img.shields.io/badge/Lang-中文-red.svg)](README_CN.md)
 
@@ -23,7 +21,6 @@
 - [📦 环境安装](#-环境安装)
 - [🧠 推理](#-推理)
 - [🏋️ 训练](#️-训练)
-- [📖 论文](#-论文)
 
 ## 🚀 快速开始
 
@@ -196,15 +193,7 @@ python data/gpr_dataset/build_index.py \
 
 随后在所选训练 YAML 中修改 `data.train_jsonl`、`data.val_jsonl` 等路径。训练输出写入 `output.workdir`，其中包含检查点、固定样本、CSV 日志与损失曲线。
 
-## 📖 论文
-
-### PCFlow: Physics-Conditioned Flow Matching for GPR Pipeline Synthesis
-
-📄 **Paper**: Coming soon
-
 🏠 **Project Page**: [https://GeometryFu.github.io/PCFlow](https://GeometryFu.github.io/PCFlow)
-
-🤗 **Model Weights**: Coming soon
 
 <div align="center">
 
