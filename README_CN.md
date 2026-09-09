@@ -5,6 +5,7 @@
 ## Physics-Conditioned Flow Matching for GPR Pipeline Synthesis
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-green.svg)](LICENSE)
+[![arXiv](https://img.shields.io/badge/arXiv-2609.07300-b31b1b.svg)](https://arxiv.org/abs/2609.07300)
 [![Language](https://img.shields.io/badge/Lang-English-blue.svg)](README.md) [![Language](https://img.shields.io/badge/Lang-中文-red.svg)](README_CN.md)
 
 🔥 **PCFlow** 是一个用于探地雷达（GPR）B-scan 快速合成的框架，基于麦克斯韦物理条件场引导的流匹配实现，实现了高视觉保真度与强物理一致性的统一。
@@ -196,6 +197,8 @@ python data/gpr_dataset/build_index.py \
 随后在所选训练 YAML 中修改 `data.train_jsonl`、`data.val_jsonl` 等路径。训练输出写入 `output.workdir`，其中包含检查点、固定样本、CSV 日志与损失曲线。
 
 🏠 **Project Page**: [https://GeometryFu.github.io/PCFlow](https://GeometryFu.github.io/PCFlow)
+
+📄 **论文**: [arXiv:2609.07300](https://arxiv.org/abs/2609.07300)
 
 <div align="center">
 

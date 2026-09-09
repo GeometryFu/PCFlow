@@ -5,6 +5,7 @@
 ## Physics-Conditioned Flow Matching for GPR Pipeline Synthesis
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-green.svg)](LICENSE)
+[![arXiv](https://img.shields.io/badge/arXiv-2609.07300-b31b1b.svg)](https://arxiv.org/abs/2609.07300)
 [![Language](https://img.shields.io/badge/Lang-English-blue.svg)](README.md) [![Language](https://img.shields.io/badge/Lang-中文-red.svg)](README_CN.md)
 
 🔥 **PCFlow** is a framework for fast Ground-Penetrating Radar (GPR) B-scan synthesis, based on Maxwell-informed condition field-guided flow matching, achieving a unity of high visual fidelity and strong physical consistency.
@@ -196,6 +197,8 @@ python data/gpr_dataset/build_index.py \
 Update `data.train_jsonl`, `data.val_jsonl` and the other split paths in the selected training YAML. Training outputs are written under `output.workdir`, including checkpoints, fixed samples, CSV logs and loss curves.
 
 🏠 **Project Page**: [https://GeometryFu.github.io/PCFlow](https://GeometryFu.github.io/PCFlow)
+
+📄 **Paper**: [arXiv:2609.07300](https://arxiv.org/abs/2609.07300)
 
 <div align="center">
 
