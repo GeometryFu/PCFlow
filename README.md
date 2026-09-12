@@ -2,7 +2,7 @@
 
 # PCFlow
 
-## Physics-Conditioned Flow Matching for GPR Pipeline Synthesis
+## Physics-Conditioned Flow Matching for GPR B-Scan Image Synthesis
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-green.svg)](LICENSE)
 [![arXiv](https://img.shields.io/badge/arXiv-2609.07300-b31b1b.svg)](https://arxiv.org/abs/2609.07300)
@@ -120,15 +120,15 @@ The sampler rebuilds a physics condition from the scene, uses EMA weights when a
 
 ### Full Argument List
 
-| Argument | Required | Default | Description |
-| --- | --- | --- | --- |
-| `--model-config` | No | `configs/model_gpr.yaml` | Model and physics-encoder configuration |
-| `--train-config` | No | `configs/train_gpr.yaml` | Device, solver and sampling configuration |
-| `--ckpt` | Yes | — | Trained `.pt` checkpoint |
-| `--jsonl` | No | — | JSONL index; the current script reads its first record |
-| `--image` | With `--infile` | — | Paired reference B-scan path required by the current CLI |
-| `--infile` | With `--image` | — | gprMax-style physical scene file |
-| `--out` | Yes | — | Output image path |
+| Argument         | Required        | Default                  | Description                                              |
+| ---------------- | --------------- | ------------------------ | -------------------------------------------------------- |
+| `--model-config` | No              | `configs/model_gpr.yaml` | Model and physics-encoder configuration                  |
+| `--train-config` | No              | `configs/train_gpr.yaml` | Device, solver and sampling configuration                |
+| `--ckpt`         | Yes             | —                        | Trained `.pt` checkpoint                                 |
+| `--jsonl`        | No              | —                        | JSONL index; the current script reads its first record   |
+| `--image`        | With `--infile` | —                        | Paired reference B-scan path required by the current CLI |
+| `--infile`       | With `--image`  | —                        | gprMax-style physical scene file                         |
+| `--out`          | Yes             | —                        | Output image path                                        |
 
 ## 🏋️ Training
 
@@ -155,7 +155,7 @@ The training loop performs the following steps:
 4. Sample Gaussian noise `z0` and `t ~ U(0,1)`, then construct `zt = (1-t)z0 + tz1`.
 5. Train the U-Net to predict `v = z1 - z0` with depth-weighted MSE. The main preset also uses 10% condition dropout, AMP, gradient clipping and EMA.
 
-The main preset runs for 50,000 steps with batch size 8 and AdamW learning rate `5e-5`. It logs every 50 steps, samples fixed validation cases every 500 steps, and validates/saves every 1,000 steps. Adjust `batch_size` and `num_workers` for your hardware. The current entry point is single-process and uses the device configured in YAML.
+The main preset runs for 50,000 steps with batch size 8 and AdamW learning rate `1e-4`. It logs every 50 steps, samples fixed validation cases every 500 steps, and validates/saves every 1,000 steps. Adjust `batch_size` and `num_workers` for your hardware. The current entry point is single-process and uses the device configured in YAML.
 
 ### Resume Training
 
