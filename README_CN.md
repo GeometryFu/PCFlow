@@ -2,7 +2,7 @@
 
 # PCFlow
 
-## Physics-Conditioned Flow Matching for GPR Pipeline Synthesis
+## Physics-Conditioned Flow Matching for GPR B-Scan Image Synthesis
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-green.svg)](LICENSE)
 [![arXiv](https://img.shields.io/badge/arXiv-2609.07300-b31b1b.svg)](https://arxiv.org/abs/2609.07300)
@@ -120,15 +120,15 @@ python sample.py \
 
 ### 完整参数说明
 
-| 参数 | 是否必填 | 默认值 | 说明 |
-| --- | --- | --- | --- |
-| `--model-config` | 否 | `configs/model_gpr.yaml` | 模型与物理编码器配置 |
-| `--train-config` | 否 | `configs/train_gpr.yaml` | 设备、求解器与采样配置 |
-| `--ckpt` | 是 | — | 训练得到的 `.pt` 检查点 |
-| `--jsonl` | 否 | — | JSONL 索引；当前脚本读取第一条记录 |
-| `--image` | 与 `--infile` 同时使用 | — | 当前接口要求的配对参考 B-scan 路径 |
-| `--infile` | 与 `--image` 同时使用 | — | gprMax 风格物理场景文件 |
-| `--out` | 是 | — | 输出图片路径 |
+| 参数             | 是否必填               | 默认值                   | 说明                               |
+| ---------------- | ---------------------- | ------------------------ | ---------------------------------- |
+| `--model-config` | 否                     | `configs/model_gpr.yaml` | 模型与物理编码器配置               |
+| `--train-config` | 否                     | `configs/train_gpr.yaml` | 设备、求解器与采样配置             |
+| `--ckpt`         | 是                     | —                        | 训练得到的 `.pt` 检查点            |
+| `--jsonl`        | 否                     | —                        | JSONL 索引；当前脚本读取第一条记录 |
+| `--image`        | 与 `--infile` 同时使用 | —                        | 当前接口要求的配对参考 B-scan 路径 |
+| `--infile`       | 与 `--image` 同时使用  | —                        | gprMax 风格物理场景文件            |
+| `--out`          | 是                     | —                        | 输出图片路径                       |
 
 ## 🏋️ 训练
 
@@ -155,7 +155,7 @@ python train.py \
 4. 采样高斯噪声 `z0` 和 `t ~ U(0,1)`，构造 `zt = (1-t)z0 + tz1`。
 5. 使用深度加权 MSE 训练 U-Net 预测 `v = z1 - z0`。主配置同时使用 10% 条件丢弃、AMP、梯度裁剪和 EMA。
 
-主配置训练 50,000 步，batch size 为 8，AdamW 学习率为 `5e-5`；每 50 步记录日志，每 500 步生成固定验证样本，每 1,000 步验证并保存检查点。请根据硬件调整 `batch_size` 和 `num_workers`。当前入口为单进程程序，使用 YAML 中配置的设备。
+主配置训练 50,000 步，batch size 为 8，AdamW 学习率为 `1e-4`；每 50 步记录日志，每 500 步生成固定验证样本，每 1,000 步验证并保存检查点。请根据硬件调整 `batch_size` 和 `num_workers`。当前入口为单进程程序，使用 YAML 中配置的设备。
 
 ### 恢复训练
 
